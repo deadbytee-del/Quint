@@ -1,6 +1,6 @@
 {
   "name": "quint",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Quint - the world's easiest Minecraft plugin creator. Drag-and-connect, block-based plugin building (Scratch-style) with real Java/Paper output and jar auto-decompilation, entirely in the browser -- no install, no server.",
   "main": "electron-main.js",
   "repository": "deadbytee-del/Quint",
