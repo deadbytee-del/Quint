@@ -1,0 +1,50 @@
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="mc_command_define" x="30" y="30">
+    <field name="CMDNAME">heal</field>
+    <field name="DESCRIPTION">Heals you to full health and hunger</field>
+    <statement name="DO">
+      <block type="mc_action_set_health">
+        <value name="PLAYER">
+          <block type="mc_value_event_player"></block>
+        </value>
+        <value name="AMOUNT">
+          <block type="math_number">
+            <field name="NUM">20</field>
+          </block>
+        </value>
+        <next>
+          <block type="mc_action_set_food">
+            <value name="PLAYER">
+              <block type="mc_value_event_player"></block>
+            </value>
+            <value name="AMOUNT">
+              <block type="math_number">
+                <field name="NUM">20</field>
+              </block>
+            </value>
+            <next>
+              <block type="mc_action_send_message">
+                <value name="PLAYER">
+                  <block type="mc_value_event_player"></block>
+                </value>
+                <value name="MESSAGE">
+                  <block type="text">
+                    <field name="TEXT">§a You have been fully healed!</field>
+                  </block>
+                </value>
+                <next>
+                  <block type="mc_action_play_sound">
+                    <field name="SOUND">ENTITY_PLAYER_LEVELUP</field>
+                    <value name="PLAYER">
+                      <block type="mc_value_event_player"></block>
+                    </value>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </statement>
+  </block>
+</xml>

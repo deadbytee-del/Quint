@@ -1,0 +1,32 @@
+[
+  {
+    "id": "join-message",
+    "title": "Welcome Message",
+    "description": "Greets players with a custom message when they join, and gives them an apple.",
+    "file": "join-message.xml",
+    "meta": {
+      "name": "WelcomePlugin",
+      "packageName": "com.quint.examples.welcome",
+      "mainClass": "WelcomePlugin",
+      "version": "1.0.0",
+      "description": "Greets new players and gives them a snack.",
+      "author": "",
+      "apiVersion": "1.20"
+    }
+  },
+  {
+    "id": "heal-command",
+    "title": "Heal Command",
+    "description": "Adds a /heal command that restores health, hunger, and plays a sound.",
+    "file": "heal-command.xml",
+    "meta": {
+      "name": "HealPlugin",
+      "packageName": "com.quint.examples.heal",
+      "mainClass": "HealPlugin",
+      "version": "1.0.0",
+      "description": "Adds a simple /heal command.",
+      "author": "",
+      "apiVersion": "1.20"
+    }
+  }
+]

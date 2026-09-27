@@ -1,0 +1,21 @@
+{
+  "name": "quint",
+  "version": "1.0.0",
+  "description": "Quint - the world's easiest Minecraft plugin creator. Drag-and-connect, block-based plugin building (Scratch-style) with real Java/Paper output and jar auto-decompilation.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "setup": "node scripts/setup-cfr.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
+    "express": "^4.21.2",
+    "multer": "^2.0.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
