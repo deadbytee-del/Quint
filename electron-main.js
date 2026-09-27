@@ -198,10 +198,19 @@ ipcMain.handle('quint:save-file', async (event, base64Data, filename) => {
 // this is purely an optional speed-up, never a hard requirement.
 // -----------------------------------------------------------------------
 const VENDOR_DIR = path.join(__dirname, 'public', 'vendor');
-const COMPILE_CLASSPATH = [
-  'paper-api.jar', 'adventure-api.jar', 'adventure-key.jar',
-  'examination-api.jar', 'examination-string.jar', 'bungeecord-chat.jar',
-].map((f) => path.join(VENDOR_DIR, f)).join(path.delimiter);
+const DEFAULT_VENDOR_SUBDIR = 'mc1.20.4';
+
+// Each supported Minecraft/Paper version has its own vendored paper-api.jar
+// (+ matching adventure/examination/bungeecord-chat versions) under
+// public/vendor/<vendorDir>/ -- see app.js's MC_VERSIONS table, which is
+// the source of truth for which vendorDir a project resolves to.
+function compileClasspathFor(vendorDir) {
+  const dir = path.join(VENDOR_DIR, vendorDir || DEFAULT_VENDOR_SUBDIR);
+  return [
+    'paper-api.jar', 'adventure-api.jar', 'adventure-key.jar',
+    'examination-api.jar', 'examination-string.jar', 'bungeecord-chat.jar',
+  ].map((f) => path.join(dir, f)).join(path.delimiter);
+}
 
 let javaBinCache; // undefined = not yet checked, null = checked, not found, string = resolved path
 
@@ -253,7 +262,7 @@ function looksLikeToolingFailure(code, stdout, stderr) {
 
 ipcMain.handle('quint:native-capable', async () => !!(await resolveJavaBinary()));
 
-ipcMain.handle('quint:native-compile', async (event, { packageName, mainClass, javaSource }) => {
+ipcMain.handle('quint:native-compile', async (event, { packageName, mainClass, javaSource, vendorDir }) => {
   const javaBin = await resolveJavaBinary();
   if (!javaBin) return { ok: false, toolingError: true, log: 'No Java runtime found on this system.' };
 
@@ -267,7 +276,7 @@ ipcMain.handle('quint:native-compile', async (event, { packageName, mainClass, j
     const { code, stdout, stderr } = await runProcess(javaBin, [
       '-cp', path.join(VENDOR_DIR, 'ecj.jar'),
       'org.eclipse.jdt.internal.compiler.batch.Main',
-      '-8', '-classpath', COMPILE_CLASSPATH, '-d', outDir, srcPath,
+      '-8', '-classpath', compileClasspathFor(vendorDir), '-d', outDir, srcPath,
     ]);
     if (code !== 0) {
       return { ok: false, toolingError: looksLikeToolingFailure(code, stdout, stderr), log: `${stdout}\n${stderr}`.trim() };

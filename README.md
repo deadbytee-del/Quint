@@ -14,6 +14,7 @@ Quint also has an **auto-decompilation** feature: drop in *any* existing plugin 
 - 🔎 **22 sensing blocks** — player health/max health/hunger/XP/position/world, permissions, sneaking/OP status, inventory contents, block type, online player count, looking up a player by name, random numbers, and more.
 - 👀 **View the generated Java** at any time — nothing is hidden, so it also works as a way to *learn* Bukkit/Paper plugin development.
 - 📦 **Real builds, zero install** — click "Build Plugin" to compile a genuine, ready-to-use `.jar` (or download the Maven source project instead) without installing a JDK, Maven, or anything else. See "How the in-browser compiler works" below.
+- 🧭 **Targets Minecraft 1.21.11 or 1.20.4** — pick either in Plugin Settings; each compiles against its own real, matching Paper API.
 - 🧩 **Auto-decompilation** — upload any existing plugin `.jar` and Quint decompiles every class with [CFR](https://www.benf.org/other/cfr/) into readable Java, right in your browser, then does a best-effort pass to turn recognizable patterns (message events, cancels, etc.) back into blocks you can drop straight into the editor.
 - 📁 **My Projects** — every project you save is kept in your browser (not just one autosave slot), with its own page to browse, reopen or delete past work.
 - ⚙️ **App preferences** — autosave, confirm-before-New, zoom-to-fit, sound effects, a default author name, and a block rendering style, all persisted across projects.
@@ -73,12 +74,11 @@ public/                       the entire app -- a plain static site, no backend 
   index.html                   page shell + modals
   css/style.css                Scratch-ish styling
   examples/                    sample projects shown in the "Examples" modal
-  vendor/                      vendored jars for the in-browser compiler/decompiler
+  vendor/                      vendored jars for the in-browser/native compiler/decompiler
     ecj.jar                     Eclipse Compiler for Java (compiles the generated source)
-    paper-api.jar                the Paper API (what the generated code is compiled against)
-    adventure-api.jar             \_ small transitive deps paper-api needs to resolve
-    bungeecord-chat.jar           /
     cfr.jar                      the CFR decompiler
+    mc1.21.11/                  paper-api.jar + matching adventure/examination/bungeecord-chat versions
+    mc1.20.4/                    for that Minecraft/Paper version -- pick one in Plugin Settings
   js/projectTemplate.js        pom.xml / plugin.yml text builder
   js/blocks.js                 custom Blockly block definitions + toolbox
   js/generator.js               a hand-written Blockly "Java" code generator

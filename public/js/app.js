@@ -40,6 +40,7 @@
   // -----------------------------------------------------------------------
   const QUINT_BLOCKLY_THEME = Blockly.Theme.defineTheme('quintDark', {
     base: Blockly.Themes.Classic,
+    fontStyle: { family: '"Segoe UI", "Inter", system-ui, sans-serif', weight: 'normal', size: 9 },
     componentStyles: {
       workspaceBackgroundColour: '#0b0712',
       toolboxBackgroundColour: '#140d24',
@@ -64,7 +65,7 @@
       renderer: rendererName || prefs.renderer || 'zelos',
       theme: QUINT_BLOCKLY_THEME,
       trashcan: true,
-      zoom: { controls: true, wheel: true, startScale: 0.95 },
+      zoom: { controls: true, wheel: true, startScale: 0.75, minScale: 0.3, maxScale: 2 },
       grid: { spacing: 25, length: 3, colour: '#251a40', snap: true },
       move: { scrollbars: true, drag: true, wheel: true },
     });
@@ -81,6 +82,25 @@
   // -----------------------------------------------------------------------
   // Project metadata
   // -----------------------------------------------------------------------
+  // Which Minecraft/Paper version a project targets. Each entry has its own
+  // vendored paper-api.jar (+ matching adventure/examination/bungeecord-chat
+  // versions) under public/vendor/<vendorDir>/, used for both the in-browser
+  // CheerpJ compile and the desktop app's native compile -- and the exact
+  // strings a real pom.xml/plugin.yml need.
+  const MC_VERSIONS = {
+    '1.21.11': { apiVersion: '1.21', paperVersion: '1.21.11-R0.1-SNAPSHOT', vendorDir: 'mc1.21.11' },
+    '1.20.4': { apiVersion: '1.20', paperVersion: '1.20.4-R0.1-SNAPSHOT', vendorDir: 'mc1.20.4' },
+  };
+  const DEFAULT_MC_VERSION = '1.21.11';
+
+  // Projects saved before this feature existed have no meta.mcVersion at
+  // all, only the old (cosmetic-only) apiVersion field -- infer from that
+  // instead of silently defaulting everyone to the newest version.
+  function resolveMcVersion() {
+    if (MC_VERSIONS[meta.mcVersion]) return meta.mcVersion;
+    return meta.apiVersion === '1.21' ? '1.21.11' : '1.20.4';
+  }
+
   let meta = defaultMeta();
 
   function defaultMeta() {
@@ -91,7 +111,7 @@
       version: '1.0.0',
       description: 'Made with Quint.',
       author: prefs.author || '',
-      apiVersion: '1.20',
+      mcVersion: DEFAULT_MC_VERSION,
     };
   }
 
@@ -401,7 +421,7 @@ ${eventMethods}}
     document.getElementById('set-version').value = meta.version;
     document.getElementById('set-description').value = meta.description;
     document.getElementById('set-author').value = meta.author;
-    document.getElementById('set-mcversion').value = meta.apiVersion;
+    document.getElementById('set-mcversion').value = resolveMcVersion();
     showModal('modal-settings');
   });
   document.getElementById('btn-settings-save').addEventListener('click', () => {
@@ -411,7 +431,7 @@ ${eventMethods}}
     meta.version = document.getElementById('set-version').value.trim() || '1.0.0';
     meta.description = document.getElementById('set-description').value.trim();
     meta.author = document.getElementById('set-author').value.trim();
-    meta.apiVersion = document.getElementById('set-mcversion').value;
+    meta.mcVersion = document.getElementById('set-mcversion').value;
     syncTitleFromName();
     hideModal('modal-settings');
     autosave();
@@ -583,7 +603,8 @@ ${eventMethods}}
     const T = window.QuintProjectTemplate;
     const packageName = T.sanitizePackage(meta.packageName);
     const mainClass = T.sanitizeIdentifier(meta.mainClass, 'QuintMain');
-    const normalizedProject = { ...meta, packageName, mainClass };
+    const mcv = MC_VERSIONS[resolveMcVersion()];
+    const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion };
     const packagePath = packageName.split('.').join('/');
 
     const zip = new JSZip();
@@ -632,11 +653,12 @@ ${eventMethods}}
       const T = window.QuintProjectTemplate;
       const packageName = T.sanitizePackage(meta.packageName);
       const mainClass = T.sanitizeIdentifier(meta.mainClass, 'QuintMain');
-      const normalizedProject = { ...meta, packageName, mainClass };
+      const mcv = MC_VERSIONS[resolveMcVersion()];
+      const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion };
       const pluginYml = T.buildPluginYml(normalizedProject, commands);
 
       const blob = await window.QuintCompiler.compilePluginJar(
-        { packageName, mainClass, javaSource: code, pluginYml },
+        { packageName, mainClass, javaSource: code, pluginYml, vendorDir: mcv.vendorDir },
         (msg) => { progressText.textContent = msg; }
       );
       download(blob, downloadName);
