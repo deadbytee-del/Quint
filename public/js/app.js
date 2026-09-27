@@ -216,6 +216,13 @@
     mc_event_inventory_click: { cls: 'org.bukkit.event.inventory.InventoryClickEvent', bind: 'org.bukkit.entity.Player player = (event.getWhoClicked() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getWhoClicked() : null;', vars: ['player'], cancellable: true },
     mc_event_bed_enter: { cls: 'org.bukkit.event.player.PlayerBedEnterEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
     mc_event_pickup_item: { cls: 'org.bukkit.event.player.PlayerPickupItemEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_kick: { cls: 'org.bukkit.event.player.PlayerKickEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_change_world: { cls: 'org.bukkit.event.player.PlayerChangedWorldEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: false },
+    mc_event_teleport: { cls: 'org.bukkit.event.player.PlayerTeleportEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_damage_by_entity: { cls: 'org.bukkit.event.entity.EntityDamageByEntityEvent', bind: 'org.bukkit.entity.Player player = (event.getDamager() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getDamager() : null;', vars: ['player'], cancellable: true },
+    mc_event_item_held: { cls: 'org.bukkit.event.player.PlayerItemHeldEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_vehicle_enter: { cls: 'org.bukkit.event.vehicle.VehicleEnterEvent', bind: 'org.bukkit.entity.Player player = (event.getEntered() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntered() : null;', vars: ['player'], cancellable: true },
+    mc_event_vehicle_exit: { cls: 'org.bukkit.event.vehicle.VehicleExitEvent', bind: 'org.bukkit.entity.Player player = (event.getExited() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getExited() : null;', vars: ['player'], cancellable: true },
   };
 
   // Contexts that aren't an EVENT_INFO event but still generate a method
