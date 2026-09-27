@@ -18,7 +18,11 @@ Quint also has an **auto-decompilation** feature: drop in *any* existing plugin 
 
 ## Using it
 
-Just open the site (see below for hosting it yourself) and start dragging blocks. There is nothing to set up, on either side: not for you as the person building the plugin, and not for whoever hosts the page. It's a plain static site — every feature, including compiling a real `.jar`, runs entirely in the visitor's own browser tab.
+Just open the site and start dragging blocks. There is nothing to set up, on either side: not for you as the person building the plugin, and not for whoever hosts the page. It's a plain static site — every feature, including compiling a real `.jar`, runs entirely in the visitor's own browser tab.
+
+### Desktop app
+
+Prefer a normal installed app over a browser tab? Quint also ships as a desktop app (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) — it's the exact same `public/` site, just opened in its own window instead of a browser, so it works completely offline after the first launch. Grab the latest build for your OS from the [Releases page](https://github.com/deadbytee-del/Quint/releases/latest).
 
 ### Running it yourself
 
@@ -29,6 +33,14 @@ npx serve public
 ```
 
 ...or push `public/` to GitHub Pages, Netlify, or any other static host. There's no backend, no build step, and no server-side dependency to install anywhere.
+
+To build the desktop app yourself instead of downloading a release:
+
+```bash
+npm install
+npm run dist        # builds an installer for your current OS into dist/
+npm run electron:dev  # or just run it directly, unpackaged, while developing
+```
 
 ## How the in-browser compiler works
 
