@@ -73,7 +73,22 @@
     btn.addEventListener('click', (e) => { hideModal(e.target.closest('.modal-backdrop').id); });
   });
 
-  function download(blob, filename) {
+  async function download(blob, filename) {
+    // Inside the desktop app, a blob: URL click never reaches Electron's
+    // download machinery (blob: URLs stay in the renderer, off the network
+    // layer Electron hooks into) -- so hand the bytes to the main process
+    // over the bridge exposed by electron-preload.js instead.
+    if (window.quintDesktop) {
+      const buf = new Uint8Array(await blob.arrayBuffer());
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < buf.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, buf.subarray(i, i + chunkSize));
+      }
+      await window.quintDesktop.saveFile(btoa(binary), filename);
+      return;
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
