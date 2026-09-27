@@ -9,9 +9,9 @@ Quint also has an **auto-decompilation** feature: drop in *any* existing plugin 
 ## Features
 
 - 🧱 **Drag-and-connect visual editor** built on [Blockly](https://developers.google.com/blockly), styled after Scratch with a deep purple/black dark theme and [Lucide](https://lucide.dev) icons throughout, and categories for Events, Commands, Actions, Sensing, Control, Logic, Math, Text and Variables.
-- ⚡ **18 events** (join/quit/chat/death/respawn, drop item, sneak/sprint toggle, XP level change, mob death, block break/place/ignite, interact, damage, hunger change, plugin start/stop) and **custom `/commands`**.
-- 🎮 **30 actions** — messaging (chat, broadcast, titles, action bar), items & inventory, teleport, health/hunger/XP, potion effects, flight & walk speed, sounds & particles, mob spawning, weather/time/lightning/explosions, game mode, kicking, and both one-shot ("wait then...") and repeating ("every N ticks...") delayed actions.
-- 🔎 **16 sensing blocks** — player health/hunger/XP/position/world, block type, online player count, random numbers, and more.
+- ⚡ **22 events** (join/quit/chat/death/respawn, drop item, sneak/sprint toggle, XP level change, mob death, block break/place/ignite, interact, damage, hunger change, any command typed, inventory clicks, bed enter, item pickup, plugin start/stop) and **custom `/commands`**.
+- 🎮 **34 actions** — messaging (chat, broadcast, titles, action bar), items & inventory (give/remove/equip/clear), teleport, health/hunger/XP, potion effects, flight & walk speed, sounds & particles, mob spawning, weather/time/lightning/explosions, game mode, kicking, permissions, spawn points, running server console commands, and both one-shot ("wait then...") and repeating ("every N ticks...") delayed actions.
+- 🔎 **22 sensing blocks** — player health/max health/hunger/XP/position/world, permissions, sneaking/OP status, inventory contents, block type, online player count, looking up a player by name, random numbers, and more.
 - 👀 **View the generated Java** at any time — nothing is hidden, so it also works as a way to *learn* Bukkit/Paper plugin development.
 - 📦 **Real builds, zero install** — click "Build Plugin" to compile a genuine, ready-to-use `.jar` (or download the Maven source project instead) without installing a JDK, Maven, or anything else. See "How the in-browser compiler works" below.
 - 🧩 **Auto-decompilation** — upload any existing plugin `.jar` and Quint decompiles every class with [CFR](https://www.benf.org/other/cfr/) into readable Java, right in your browser, then does a best-effort pass to turn recognizable patterns (message events, cancels, etc.) back into blocks you can drop straight into the editor.
@@ -26,7 +26,14 @@ Just open the site and start dragging blocks. There is nothing to set up, on eit
 
 ### Desktop app
 
-Prefer a normal installed app over a browser tab? Quint also ships as a desktop app (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) — it's the exact same `public/` site, just opened in its own window instead of a browser, so it works completely offline after the first launch. Grab the latest build for your OS from the [Releases page](https://github.com/deadbytee-del/Quint/releases/latest).
+Prefer a normal installed app over a browser tab? Quint also ships as a desktop app (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) — it's the same `public/` site, opened in its own window instead of a browser, so it works completely offline after the first launch. Grab the latest build for your OS from the [Releases page](https://github.com/deadbytee-del/Quint/releases/latest).
+
+The desktop app isn't just a bookmarked tab -- it does a few things a website fundamentally can't:
+
+- ⚡ **Native compiling.** A browser tab can only run a real Java toolchain by emulating one in WebAssembly (see below) — real, but slower to start every time. The desktop app instead checks for a Java runtime already on your machine and, if it finds one, runs the very same compiler/decompiler jars through it directly. No WASM engine to load, no browser memory ceiling — builds finish in well under a second instead of the several seconds the in-browser path takes. If no system Java is found, it falls back to the exact same in-browser compiler the website uses, so it always works either way.
+- 🍎 **Works the same on macOS.** GUI apps on macOS often can't see a JDK that's perfectly visible from Terminal, because they don't inherit your shell's `PATH`. Quint works around this at startup (reading your login shell's real `PATH`, plus checking `JAVA_HOME` and `/usr/libexec/java_home`), so a Java install that "should" work usually does.
+- 🔄 **Auto-updates** in the background via GitHub Releases, instead of you having to notice a new version and re-download it.
+- 💾 A real save-file dialog (instead of a browser downloads folder) and a proper installer with a Start Menu/Desktop shortcut on Windows.
 
 ### Running it yourself
 

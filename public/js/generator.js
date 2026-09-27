@@ -307,6 +307,29 @@
     return `${player}.sendActionBar(net.kyori.adventure.text.Component.text(String.valueOf(${text})));\n`;
   };
 
+  F['mc_action_remove_item'] = (block, g) => {
+    const material = block.getFieldValue('MATERIAL');
+    const amount = num(g, block, 'AMOUNT', 1);
+    const player = playerInput(g, block);
+    return `${player}.getInventory().removeItem(new org.bukkit.inventory.ItemStack(org.bukkit.Material.${material}, ${toInt(amount)}));\n`;
+  };
+
+  F['mc_action_run_console_command'] = (block, g) => {
+    const command = str(g, block, 'COMMAND', '""');
+    return `getServer().dispatchCommand(getServer().getConsoleSender(), ${command});\n`;
+  };
+
+  F['mc_action_set_spawn_point'] = (block, g) => {
+    const player = playerInput(g, block);
+    return `${player}.setBedSpawnLocation(${player}.getLocation(), true);\n`;
+  };
+
+  F['mc_action_grant_permission'] = (block, g) => {
+    const player = playerInput(g, block);
+    const permission = str(g, block, 'PERMISSION', '""');
+    return `${player}.addAttachment(this, ${permission}, true);\n`;
+  };
+
   // ---------------------------------------------------------------------
   // Sensing / reporters
   // ---------------------------------------------------------------------
@@ -383,6 +406,39 @@
   F['mc_value_block_type'] = (block, g) => {
     const b = scopedIdentifier(g, block, 'block', '((org.bukkit.block.Block) null)');
     return [`${b}.getType().name()`, Order.ATOMIC];
+  };
+
+  F['mc_value_has_permission'] = (block, g) => {
+    const player = playerInput(g, block);
+    const permission = str(g, block, 'PERMISSION', '""');
+    return [`${player}.hasPermission(${permission})`, Order.ATOMIC];
+  };
+
+  F['mc_value_is_sneaking'] = (block, g) => {
+    const player = playerInput(g, block);
+    return [`${player}.isSneaking()`, Order.ATOMIC];
+  };
+
+  F['mc_value_is_op'] = (block, g) => {
+    const player = playerInput(g, block);
+    return [`${player}.isOp()`, Order.ATOMIC];
+  };
+
+  F['mc_value_has_item'] = (block, g) => {
+    const player = playerInput(g, block);
+    const material = block.getFieldValue('MATERIAL');
+    const amount = num(g, block, 'AMOUNT', 1);
+    return [`${player}.getInventory().contains(org.bukkit.Material.${material}, ${toInt(amount)})`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_max_health'] = (block, g) => {
+    const player = playerInput(g, block);
+    return [`${player}.getMaxHealth()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_by_name'] = (block, g) => {
+    const name = str(g, block, 'NAME', '""');
+    return [`getServer().getPlayerExact(${name})`, Order.ATOMIC];
   };
 
   // ---------------------------------------------------------------------

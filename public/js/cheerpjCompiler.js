@@ -70,13 +70,87 @@
     return new Blob([bytes], { type: mimeType || 'application/octet-stream' });
   }
 
+  // btoa/atob only take binary strings, and String.fromCharCode(...bytes)
+  // blows the call stack on anything but small arrays -- chunk it.
+  function uint8ToBase64(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  }
+  function base64ToUint8(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  async function packageJar(classBytes, opts) {
+    const packagePath = opts.packageName.split('.').join('/');
+    const zip = new JSZip();
+    zip.file('plugin.yml', opts.pluginYml);
+    zip.file(`${packagePath}/${opts.mainClass}.class`, classBytes);
+    zip.file('META-INF/MANIFEST.MF', 'Manifest-Version: 1.0\nCreated-By: Quint\n');
+    return zip.generateAsync({ type: 'blob', mimeType: 'application/java-archive' });
+  }
+
+  // The desktop app (see electron-main.js/electron-preload.js) can run the
+  // very same vendored ECJ/CFR jars through a real system JVM instead of
+  // CheerpJ's WASM-emulated one -- no multi-MB engine to load, no browser
+  // memory ceiling, just native code. It's a pure speed-up: if the machine
+  // has no usable Java (or something about it misbehaves), we fall back to
+  // the CheerpJ path below exactly as if this code didn't exist.
+  async function compilePluginJarNative(opts, onProgress) {
+    onProgress && onProgress("Compiling with your system's Java (native)...");
+    const result = await window.quintDesktop.nativeCompile({
+      packageName: opts.packageName,
+      mainClass: opts.mainClass,
+      javaSource: opts.javaSource,
+    });
+    if (!result.ok) {
+      throw Object.assign(new Error('Compilation failed'), { log: result.log, toolingError: result.toolingError });
+    }
+    onProgress && onProgress('Packaging the .jar...');
+    return packageJar(base64ToUint8(result.classBase64), opts);
+  }
+
+  async function decompileJarNative(jarBytes, onProgress) {
+    onProgress && onProgress("Decompiling with your system's Java (native)...");
+    const result = await window.quintDesktop.nativeDecompile(uint8ToBase64(jarBytes));
+    if (!result.ok) {
+      throw Object.assign(new Error('Decompile failed'), { log: result.log });
+    }
+    return result.files;
+  }
+
+  // Checked once per page load, not once per build -- avoids an extra IPC
+  // round trip on every single compile/decompile.
+  const nativeCapablePromise = (window.quintDesktop
+    ? window.quintDesktop.nativeCapable().catch(() => false)
+    : Promise.resolve(false));
+
   /**
    * Compiles a single generated Java source file against the Paper API and
-   * packages the result into a real, loadable plugin .jar.
+   * packages the result into a real, loadable plugin .jar. Prefers a native
+   * system Java (desktop app only) over the in-browser CheerpJ engine.
    * @param {{packageName:string, mainClass:string, javaSource:string, pluginYml:string}} opts
    * @returns {Promise<Blob>}
    */
   async function compilePluginJar(opts, onProgress) {
+    if (await nativeCapablePromise) {
+      try {
+        return await compilePluginJarNative(opts, onProgress);
+      } catch (err) {
+        if (!err.toolingError) throw err; // a real error in the generated Java -- show it, don't retry
+        onProgress && onProgress('Native compiler unavailable, falling back to the in-browser compiler...');
+      }
+    }
+    return compilePluginJarCheerpj(opts, onProgress);
+  }
+
+  async function compilePluginJarCheerpj(opts, onProgress) {
     await ensureCheerpj(onProgress);
     onProgress && onProgress('Compiling your plugin...');
 
@@ -109,21 +183,28 @@
       throw Object.assign(new Error('Compilation reported success but no .class file was produced'), { log: output });
     }
     const classBytes = new Uint8Array(await classBlob.arrayBuffer());
-
-    const zip = new JSZip();
-    zip.file('plugin.yml', opts.pluginYml);
-    zip.file(`${packagePath}/${opts.mainClass}.class`, classBytes);
-    zip.file('META-INF/MANIFEST.MF', 'Manifest-Version: 1.0\nCreated-By: Quint\n');
     onProgress && onProgress('Packaging the .jar...');
-    return zip.generateAsync({ type: 'blob', mimeType: 'application/java-archive' });
+    return packageJar(classBytes, opts);
   }
 
   /**
    * Decompiles every class in an uploaded .jar into readable Java source.
+   * Prefers a native system Java (desktop app only) over CheerpJ.
    * @param {Uint8Array} jarBytes
    * @returns {Promise<{path:string, content:string}[]>}
    */
   async function decompileJarClientSide(jarBytes, onProgress) {
+    if (await nativeCapablePromise) {
+      try {
+        return await decompileJarNative(jarBytes, onProgress);
+      } catch (err) {
+        onProgress && onProgress('Native decompiler unavailable, falling back to the in-browser decompiler...');
+      }
+    }
+    return decompileJarClientSideCheerpj(jarBytes, onProgress);
+  }
+
+  async function decompileJarClientSideCheerpj(jarBytes, onProgress) {
     await ensureCheerpj(onProgress);
     onProgress && onProgress('Reading the jar...');
 

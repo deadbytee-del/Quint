@@ -192,6 +192,10 @@
     mc_event_entity_death: { cls: 'org.bukkit.event.entity.EntityDeathEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;', vars: ['player'], cancellable: true },
     mc_event_block_ignite: { cls: 'org.bukkit.event.block.BlockIgniteEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();', vars: ['player', 'block'], cancellable: true },
     mc_event_food_change: { cls: 'org.bukkit.event.entity.FoodLevelChangeEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;', vars: ['player'], cancellable: true },
+    mc_event_command_preprocess: { cls: 'org.bukkit.event.player.PlayerCommandPreprocessEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); String message = event.getMessage();', vars: ['player', 'message'], cancellable: true },
+    mc_event_inventory_click: { cls: 'org.bukkit.event.inventory.InventoryClickEvent', bind: 'org.bukkit.entity.Player player = (event.getWhoClicked() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getWhoClicked() : null;', vars: ['player'], cancellable: true },
+    mc_event_bed_enter: { cls: 'org.bukkit.event.player.PlayerBedEnterEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_pickup_item: { cls: 'org.bukkit.event.player.PlayerPickupItemEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
   };
 
   // Contexts that aren't an EVENT_INFO event but still generate a method
