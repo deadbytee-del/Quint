@@ -14,28 +14,6 @@
   });
 
   // -----------------------------------------------------------------------
-  // Backend feature-detection. Quint's editor, code view, save/load and
-  // source-project export all work with no server at all (e.g. hosted as a
-  // static site on GitHub Pages). Real jar compilation and jar
-  // auto-decompilation need a JVM + Maven + CFR, so they only light up when
-  // the full Node app (`npm start`) is actually serving this page.
-  // -----------------------------------------------------------------------
-  let hasBackend = false;
-
-  function updateBackendUI() {
-    document.body.classList.toggle('static-mode', !hasBackend);
-    document.getElementById('static-mode-banner').hidden = hasBackend;
-    document.getElementById('btn-build-jar-real').hidden = !hasBackend;
-    document.getElementById('build-static-note').hidden = hasBackend;
-  }
-  updateBackendUI();
-
-  fetch('health', { cache: 'no-store' })
-    .then((r) => { hasBackend = r.ok; })
-    .catch(() => { hasBackend = false; })
-    .finally(updateBackendUI);
-
-  // -----------------------------------------------------------------------
   // Project metadata
   // -----------------------------------------------------------------------
   let meta = defaultMeta();
@@ -329,9 +307,8 @@ ${eventMethods}}
     showModal('modal-build');
   });
 
-  // Builds the same Maven project layout as the server (pom.xml, plugin.yml,
-  // the generated .java file) entirely in the browser with JSZip. Used for
-  // "download source" whenever there's no backend to ask instead.
+  // Builds the same Maven project layout (pom.xml, plugin.yml, the generated
+  // .java file) entirely in the browser with JSZip.
   async function buildSourceZipClientSide(code, commands) {
     const T = window.QuintProjectTemplate;
     const packageName = T.sanitizePackage(meta.packageName);
@@ -352,9 +329,7 @@ ${eventMethods}}
     const log = document.getElementById('build-log');
     log.hidden = true;
     progress.hidden = false;
-    progressText.textContent = mode === 'jar'
-      ? 'Compiling your plugin into a real .jar (downloading Paper API on first use can take a minute)…'
-      : 'Packaging your source project…';
+    progressText.textContent = mode === 'jar' ? 'Getting ready to compile…' : 'Packaging your source project…';
 
     let code, commands;
     try {
@@ -366,14 +341,7 @@ ${eventMethods}}
       return;
     }
 
-    if (mode === 'jar' && !hasBackend) {
-      progress.hidden = true;
-      log.hidden = false;
-      log.textContent = 'No build server is available here (demo mode). Download the source project instead and run "mvn package" yourself, or run Quint locally.';
-      return;
-    }
-
-    if (mode === 'source' && !hasBackend) {
+    if (mode === 'source') {
       try {
         const blob = await buildSourceZipClientSide(code, commands);
         download(blob, downloadName);
@@ -388,28 +356,19 @@ ${eventMethods}}
       return;
     }
 
+    // mode === 'jar': compile entirely client-side (ECJ + the Paper API,
+    // running inside a WebAssembly JVM via CheerpJ -- see cheerpjCompiler.js).
     try {
-      const res = await fetch('api/build', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode,
-          project: meta,
-          commands,
-          files: [{ path: `${meta.mainClass}.java`, content: code }],
-        }),
-      });
+      const T = window.QuintProjectTemplate;
+      const packageName = T.sanitizePackage(meta.packageName);
+      const mainClass = T.sanitizeIdentifier(meta.mainClass, 'QuintMain');
+      const normalizedProject = { ...meta, packageName, mainClass };
+      const pluginYml = T.buildPluginYml(normalizedProject, commands);
 
-      const contentType = res.headers.get('content-type') || '';
-      if (!res.ok || contentType.includes('application/json')) {
-        const errBody = await res.json().catch(() => ({}));
-        progress.hidden = true;
-        log.hidden = false;
-        log.textContent = (errBody.error || 'Build failed') + (errBody.log ? '\n\n' + errBody.log : '');
-        return;
-      }
-
-      const blob = await res.blob();
+      const blob = await window.QuintCompiler.compilePluginJar(
+        { packageName, mainClass, javaSource: code, pluginYml },
+        (msg) => { progressText.textContent = msg; }
+      );
       download(blob, downloadName);
       progress.hidden = true;
       toast('Download starting…', 'success');
@@ -417,7 +376,7 @@ ${eventMethods}}
     } catch (err) {
       progress.hidden = true;
       log.hidden = false;
-      log.textContent = 'Network error: ' + err.message;
+      log.textContent = (err.message || 'Build failed') + (err.log ? '\n\n' + err.log : '');
     }
   }
 
@@ -434,13 +393,6 @@ ${eventMethods}}
   let lastDecompile = null;
 
   document.getElementById('btn-import-jar').addEventListener('click', () => {
-    if (!hasBackend) {
-      document.getElementById('decompile-unavailable').hidden = false;
-      document.getElementById('decompile-progress').hidden = true;
-      document.getElementById('decompile-result').hidden = true;
-      showModal('modal-decompile');
-      return;
-    }
     document.getElementById('file-jar-input').click();
   });
 
@@ -449,32 +401,28 @@ ${eventMethods}}
     e.target.value = '';
     if (!file) return;
 
-    document.getElementById('decompile-unavailable').hidden = true;
+    const progressTextEl = document.querySelector('#decompile-progress span');
     document.getElementById('decompile-progress').hidden = false;
     document.getElementById('decompile-result').hidden = true;
     document.getElementById('btn-decompile-download-zip').hidden = true;
     document.getElementById('btn-decompile-load-blocks').hidden = true;
     showModal('modal-decompile');
 
-    const form = new FormData();
-    form.append('jarfile', file);
     try {
-      const res = await fetch('api/decompile', { method: 'POST', body: form });
-      const data = await res.json();
+      const jarBytes = new Uint8Array(await file.arrayBuffer());
+      const files = await window.QuintCompiler.decompileJarClientSide(jarBytes, (msg) => {
+        if (progressTextEl) progressTextEl.textContent = msg;
+      });
+      const { xml, stats } = window.QuintBlockify.blockifySources(files);
       document.getElementById('decompile-progress').hidden = true;
-      if (!res.ok) {
-        document.getElementById('decompile-result').hidden = false;
-        document.getElementById('decompile-stats').textContent = data.error || 'Decompilation failed.';
-        document.getElementById('decompile-tabs').innerHTML = '';
-        document.getElementById('decompile-source').textContent = data.log || '';
-        return;
-      }
-      lastDecompile = data;
-      renderDecompileResult(data);
+      lastDecompile = { fileName: file.name, files, blocks: xml, stats };
+      renderDecompileResult(lastDecompile);
     } catch (err) {
       document.getElementById('decompile-progress').hidden = true;
       document.getElementById('decompile-result').hidden = false;
-      document.getElementById('decompile-stats').textContent = 'Network error: ' + err.message;
+      document.getElementById('decompile-stats').textContent = (err.message || 'Decompilation failed.') + (err.log ? '\n\n' + err.log : '');
+      document.getElementById('decompile-tabs').innerHTML = '';
+      document.getElementById('decompile-source').textContent = '';
     }
   });
 
