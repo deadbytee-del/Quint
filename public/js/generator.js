@@ -58,8 +58,48 @@
     return code || fallback;
   }
 
+  // For sockets that need a Java String: Blockly doesn't enforce output
+  // types between blocks, so any reporter (a number, a player, etc.) can
+  // be plugged into a "message"-shaped socket. Wrapping in String.valueOf
+  // makes that always compile, whatever type actually comes out.
+  function str(generator, block, name, fallback) {
+    const code = generator.valueToCode(block, name, Order.NONE);
+    return code ? `String.valueOf(${code})` : fallback;
+  }
+
   function toInt(expr) {
     return `((int)Math.round(${expr}))`;
+  }
+
+  // Some identifiers (`player`, `message`, `block`, `sender`, `args`) only
+  // exist inside specific event/command bodies -- app.js sets
+  // generator.scopeVars before generating each body. Blocks that reference
+  // one of these bare identifiers (either as an explicit reporter, or as
+  // the implicit default for an empty PLAYER socket) must not emit that
+  // identifier when it isn't in scope, or the generated Java fails to
+  // compile ("cannot find symbol"). Instead they fall back to a
+  // type-correct placeholder and flag the block with a warning so the
+  // mistake is visible in the editor instead of only at compile time.
+  function inScope(generator, name) {
+    return !!(generator.scopeVars && generator.scopeVars.has(name));
+  }
+
+  function scopedIdentifier(generator, block, name, fallback) {
+    if (inScope(generator, name)) {
+      block.setWarningText(null);
+      return name;
+    }
+    block.setWarningText(`This block needs "${name}", which isn't available here. Move it into an event or command that provides it.`);
+    return fallback;
+  }
+
+  function playerInput(generator, block, name) {
+    const code = generator.valueToCode(block, name || 'PLAYER', Order.NONE);
+    if (code) {
+      block.setWarningText(null);
+      return code;
+    }
+    return scopedIdentifier(generator, block, 'player', '((org.bukkit.entity.Player) null)');
   }
 
   const F = Java.forBlock;
@@ -68,25 +108,25 @@
   // Actions
   // ---------------------------------------------------------------------
   F['mc_action_send_message'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
-    const msg = val(g, block, 'MESSAGE', '""');
+    const player = playerInput(g, block);
+    const msg = str(g, block, 'MESSAGE', '""');
     return `${player}.sendMessage(${msg});\n`;
   };
 
   F['mc_action_broadcast'] = (block, g) => {
-    const msg = val(g, block, 'MESSAGE', '""');
+    const msg = str(g, block, 'MESSAGE', '""');
     return `getServer().broadcastMessage(${msg});\n`;
   };
 
   F['mc_action_give_item'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const material = block.getFieldValue('MATERIAL');
     const amount = num(g, block, 'AMOUNT', 1);
     return `${player}.getInventory().addItem(new org.bukkit.inventory.ItemStack(org.bukkit.Material.${material}, ${toInt(amount)}));\n`;
   };
 
   F['mc_action_teleport'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const x = num(g, block, 'X', 0);
     const y = num(g, block, 'Y', 0);
     const z = num(g, block, 'Z', 0);
@@ -94,59 +134,74 @@
   };
 
   F['mc_action_set_health'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const amount = num(g, block, 'AMOUNT', 20);
     return `${player}.setHealth(Math.max(0, Math.min(${player}.getMaxHealth(), ${amount})));\n`;
   };
 
   F['mc_action_set_food'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const amount = num(g, block, 'AMOUNT', 20);
     return `${player}.setFoodLevel(Math.max(0, Math.min(20, ${toInt(amount)})));\n`;
   };
 
   F['mc_action_play_sound'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const sound = block.getFieldValue('SOUND');
     return `${player}.playSound(${player}.getLocation(), org.bukkit.Sound.${sound}, 1.0f, 1.0f);\n`;
   };
 
   F['mc_action_spawn_particle'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const particle = block.getFieldValue('PARTICLE');
     const count = num(g, block, 'COUNT', 20);
     return `${player}.getWorld().spawnParticle(org.bukkit.Particle.${particle}, ${player}.getLocation(), ${toInt(count)});\n`;
   };
 
   F['mc_action_spawn_mob'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const entity = block.getFieldValue('ENTITY');
     return `${player}.getWorld().spawnEntity(${player}.getLocation(), org.bukkit.entity.EntityType.${entity});\n`;
   };
 
   F['mc_action_set_gamemode'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const mode = block.getFieldValue('GAMEMODE');
     return `${player}.setGameMode(org.bukkit.GameMode.${mode});\n`;
   };
 
   F['mc_action_kick_player'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
-    const reason = val(g, block, 'REASON', '""');
+    const player = playerInput(g, block);
+    const reason = str(g, block, 'REASON', '""');
     return `${player}.kickPlayer(${reason});\n`;
   };
 
   F['mc_action_set_join_message'] = (block, g) => {
-    const msg = val(g, block, 'MESSAGE', '""');
+    const msg = str(g, block, 'MESSAGE', '""');
+    if (!g.hasJoinMsg) {
+      block.setWarningText('This only works inside "when a player joins".');
+      return '';
+    }
+    block.setWarningText(null);
     return `event.setJoinMessage(${msg});\n`;
   };
 
   F['mc_action_set_quit_message'] = (block, g) => {
-    const msg = val(g, block, 'MESSAGE', '""');
+    const msg = str(g, block, 'MESSAGE', '""');
+    if (!g.hasQuitMsg) {
+      block.setWarningText('This only works inside "when a player leaves".');
+      return '';
+    }
+    block.setWarningText(null);
     return `event.setQuitMessage(${msg});\n`;
   };
 
-  F['mc_action_cancel_event'] = () => {
+  F['mc_action_cancel_event'] = (block, g) => {
+    if (!g.cancellable) {
+      block.setWarningText('This event can\'t be cancelled -- this block has no effect here.');
+      return '';
+    }
+    block.setWarningText(null);
     return 'event.setCancelled(true);\n';
   };
 
@@ -163,30 +218,30 @@
   };
 
   F['mc_action_set_time'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const ticks = num(g, block, 'TICKS', 0);
     return `${player}.getWorld().setTime(${toInt(ticks)});\n`;
   };
 
   F['mc_action_set_weather'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const storm = block.getFieldValue('WEATHER') === 'STORM';
     return `${player}.getWorld().setStorm(${storm});\n`;
   };
 
   F['mc_action_strike_lightning'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return `${player}.getWorld().strikeLightning(${player}.getLocation());\n`;
   };
 
   F['mc_action_create_explosion'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const power = num(g, block, 'POWER', 4);
     return `${player}.getWorld().createExplosion(${player}.getLocation(), (float) (${power}));\n`;
   };
 
   F['mc_action_add_potion_effect'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const effect = block.getFieldValue('EFFECT');
     const seconds = num(g, block, 'SECONDS', 10);
     const level = num(g, block, 'LEVEL', 1);
@@ -194,115 +249,150 @@
   };
 
   F['mc_action_clear_potion_effects'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return `for (org.bukkit.potion.PotionEffect quintEffect : ${player}.getActivePotionEffects()) { ${player}.removePotionEffect(quintEffect.getType()); }\n`;
   };
 
   F['mc_action_set_flying'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const on = block.getFieldValue('STATE') === 'ON';
     return `${player}.setAllowFlight(${on}); ${player}.setFlying(${on});\n`;
   };
 
   F['mc_action_set_walk_speed'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const speed = num(g, block, 'SPEED', 0.2);
     return `${player}.setWalkSpeed(Math.max(-1f, Math.min(1f, (float) (${speed}))));\n`;
   };
 
   F['mc_action_clear_inventory'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return `${player}.getInventory().clear();\n`;
   };
 
   F['mc_action_give_xp'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const amount = num(g, block, 'AMOUNT', 10);
     return `${player}.giveExp(${toInt(amount)});\n`;
   };
 
   F['mc_action_set_level'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const level = num(g, block, 'LEVEL', 0);
     return `${player}.setLevel(${toInt(level)});\n`;
   };
 
   F['mc_action_equip_item'] = (block, g) => {
     const material = block.getFieldValue('MATERIAL');
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return `${player}.getInventory().setItemInMainHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.${material}, 1));\n`;
   };
 
   F['mc_action_set_block_at_player'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const material = block.getFieldValue('MATERIAL2');
     return `${player}.getLocation().getBlock().setType(org.bukkit.Material.${material});\n`;
   };
 
   F['mc_action_send_title'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
-    const title = val(g, block, 'TITLE', '""');
-    const subtitle = val(g, block, 'SUBTITLE', '""');
+    const player = playerInput(g, block);
+    const title = str(g, block, 'TITLE', '""');
+    const subtitle = str(g, block, 'SUBTITLE', '""');
     return `${player}.sendTitle(${title}, ${subtitle}, 10, 70, 20);\n`;
   };
 
   F['mc_action_send_actionbar'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     const text = val(g, block, 'TEXT', '""');
     return `${player}.sendActionBar(net.kyori.adventure.text.Component.text(String.valueOf(${text})));\n`;
+  };
+
+  F['mc_action_remove_item'] = (block, g) => {
+    const material = block.getFieldValue('MATERIAL');
+    const amount = num(g, block, 'AMOUNT', 1);
+    const player = playerInput(g, block);
+    return `${player}.getInventory().removeItem(new org.bukkit.inventory.ItemStack(org.bukkit.Material.${material}, ${toInt(amount)}));\n`;
+  };
+
+  F['mc_action_run_console_command'] = (block, g) => {
+    const command = str(g, block, 'COMMAND', '""');
+    return `getServer().dispatchCommand(getServer().getConsoleSender(), ${command});\n`;
+  };
+
+  F['mc_action_set_spawn_point'] = (block, g) => {
+    const player = playerInput(g, block);
+    return `${player}.setBedSpawnLocation(${player}.getLocation(), true);\n`;
+  };
+
+  F['mc_action_grant_permission'] = (block, g) => {
+    const player = playerInput(g, block);
+    const permission = str(g, block, 'PERMISSION', '""');
+    return `${player}.addAttachment(this, ${permission}, true);\n`;
   };
 
   // ---------------------------------------------------------------------
   // Sensing / reporters
   // ---------------------------------------------------------------------
-  F['mc_value_event_player'] = () => ['player', Order.ATOMIC];
-  F['mc_value_event_message'] = () => ['message', Order.ATOMIC];
-  F['mc_value_event_block'] = () => ['block', Order.ATOMIC];
-  F['mc_value_command_sender'] = () => ['sender', Order.ATOMIC];
-  F['mc_value_command_args_joined'] = () => ['String.join(" ", args)', Order.ATOMIC];
+  F['mc_value_event_player'] = (block, g) => [scopedIdentifier(g, block, 'player', '((org.bukkit.entity.Player) null)'), Order.ATOMIC];
+  F['mc_value_event_message'] = (block, g) => [scopedIdentifier(g, block, 'message', '""'), Order.ATOMIC];
+  F['mc_value_event_block'] = (block, g) => [scopedIdentifier(g, block, 'block', '((org.bukkit.block.Block) null)'), Order.ATOMIC];
+  F['mc_value_command_sender'] = (block, g) => [scopedIdentifier(g, block, 'sender', '((org.bukkit.command.CommandSender) null)'), Order.ATOMIC];
+  F['mc_value_command_args_joined'] = (block, g) => {
+    if (!inScope(g, 'args')) {
+      block.setWarningText('This only works inside a command.');
+      return ['""', Order.ATOMIC];
+    }
+    block.setWarningText(null);
+    return ['String.join(" ", args)', Order.ATOMIC];
+  };
 
   F['mc_value_player_name'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return [`${player}.getName()`, Order.ATOMIC];
   };
 
-  F['mc_value_command_arg'] = (block) => {
+  F['mc_value_command_arg'] = (block, g) => {
     const idx = Math.max(1, parseInt(block.getFieldValue('INDEX'), 10) || 1) - 1;
+    if (!inScope(g, 'args')) {
+      block.setWarningText('This only works inside a command.');
+      return ['""', Order.ATOMIC];
+    }
+    block.setWarningText(null);
     return [`(args.length > ${idx} ? args[${idx}] : "")`, Order.ATOMIC];
   };
 
   F['mc_value_player_health'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return [`${player}.getHealth()`, Order.ATOMIC];
   };
 
   F['mc_value_player_food'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return [`${player}.getFoodLevel()`, Order.ATOMIC];
   };
 
   F['mc_value_player_level'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return [`${player}.getLevel()`, Order.ATOMIC];
   };
 
   F['mc_value_player_world_name'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return [`${player}.getWorld().getName()`, Order.ATOMIC];
   };
 
   F['mc_value_player_x'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return [`${player}.getLocation().getX()`, Order.ATOMIC];
   };
 
   F['mc_value_player_y'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return [`${player}.getLocation().getY()`, Order.ATOMIC];
   };
 
   F['mc_value_player_z'] = (block, g) => {
-    const player = val(g, block, 'PLAYER', 'player');
+    const player = playerInput(g, block);
     return [`${player}.getLocation().getZ()`, Order.ATOMIC];
   };
 
@@ -313,7 +403,43 @@
     return [`((int) (Math.random() * ((${max}) + 1)))`, Order.ATOMIC];
   };
 
-  F['mc_value_block_type'] = () => ['block.getType().name()', Order.ATOMIC];
+  F['mc_value_block_type'] = (block, g) => {
+    const b = scopedIdentifier(g, block, 'block', '((org.bukkit.block.Block) null)');
+    return [`${b}.getType().name()`, Order.ATOMIC];
+  };
+
+  F['mc_value_has_permission'] = (block, g) => {
+    const player = playerInput(g, block);
+    const permission = str(g, block, 'PERMISSION', '""');
+    return [`${player}.hasPermission(${permission})`, Order.ATOMIC];
+  };
+
+  F['mc_value_is_sneaking'] = (block, g) => {
+    const player = playerInput(g, block);
+    return [`${player}.isSneaking()`, Order.ATOMIC];
+  };
+
+  F['mc_value_is_op'] = (block, g) => {
+    const player = playerInput(g, block);
+    return [`${player}.isOp()`, Order.ATOMIC];
+  };
+
+  F['mc_value_has_item'] = (block, g) => {
+    const player = playerInput(g, block);
+    const material = block.getFieldValue('MATERIAL');
+    const amount = num(g, block, 'AMOUNT', 1);
+    return [`${player}.getInventory().contains(org.bukkit.Material.${material}, ${toInt(amount)})`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_max_health'] = (block, g) => {
+    const player = playerInput(g, block);
+    return [`${player}.getMaxHealth()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_by_name'] = (block, g) => {
+    const name = str(g, block, 'NAME', '""');
+    return [`getServer().getPlayerExact(${name})`, Order.ATOMIC];
+  };
 
   // ---------------------------------------------------------------------
   // Control
@@ -345,7 +471,13 @@
     let cond = g.valueToCode(block, 'BOOL', until ? Order.UNARY : Order.NONE) || 'false';
     if (until) cond = `!(${cond})`;
     const branch = g.statementToCode(block, 'DO');
-    return `while (${cond}) {\n${branch}}\n`;
+    // Route the condition through a method call rather than emitting it
+    // raw: a literal/constant "true"/"false" condition (e.g. "repeat until
+    // [true]") makes the loop body a compile-time-constant-false
+    // condition, which javac/ECJ reject as an "unreachable statement".
+    // Boolean.valueOf(...).booleanValue() is never a JLS constant
+    // expression, so this sidesteps that check without changing behavior.
+    return `while (Boolean.valueOf(${cond}).booleanValue()) {\n${branch}}\n`;
   };
 
   // ---------------------------------------------------------------------

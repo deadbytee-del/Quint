@@ -54,6 +54,10 @@
     ['mc_event_entity_death', '💀 when any mob dies', 'Fires whenever a mob (or player) dies.'],
     ['mc_event_block_ignite', '🔥 when a block catches fire', 'Fires whenever fire starts spreading to a block.'],
     ['mc_event_food_change', '🍗 when hunger changes', 'Fires whenever a player\'s hunger level changes.'],
+    ['mc_event_command_preprocess', '⌨ when a player types any command', 'Fires right before ANY command runs (even ones from other plugins). Use "the message" below to read what they typed.'],
+    ['mc_event_inventory_click', '🖱 when a player clicks in an inventory', 'Fires whenever a player clicks a slot in a chest, crafting table, their own inventory, etc.'],
+    ['mc_event_bed_enter', '🛏 when a player gets in bed', 'Fires when a player tries to sleep.'],
+    ['mc_event_pickup_item', '🫳 when a player picks up an item', 'Fires whenever a player picks an item up off the ground.'],
   ];
   for (const [type, label, tooltip] of EVENT_HATS) {
     define(type, {
@@ -416,6 +420,46 @@
     tooltip: 'Shows a short message just above a player\'s hotbar.',
   });
 
+  define('mc_action_remove_item', {
+    message0: '🗑 remove %1 x %2 from %3\'s inventory',
+    args0: [
+      { type: 'field_dropdown', name: 'MATERIAL', options: MATERIALS },
+      { type: 'input_value', name: 'AMOUNT' },
+      { type: 'input_value', name: 'PLAYER' },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Takes items out of a player\'s inventory, if they have them.',
+  });
+
+  define('mc_action_run_console_command', {
+    message0: '🖥 run the server command %1',
+    args0: [{ type: 'input_value', name: 'COMMAND' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Runs a command as the server console, exactly like typing it in the server terminal (e.g. "gamemode creative Steve"). Don\'t include the leading /.',
+  });
+
+  define('mc_action_set_spawn_point', {
+    message0: '🛏 set %1\'s spawn point to their current location',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Like sleeping in a bed -- the player respawns here after dying.',
+  });
+
+  define('mc_action_grant_permission', {
+    message0: '🔑 give %1 the permission %2',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'PERMISSION' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Grants a permission node (e.g. "essentials.fly") to a player for as long as they stay online.',
+  });
+
   // ---------------------------------------------------------------------
   // Sensing / value reporters.
   // ---------------------------------------------------------------------
@@ -548,6 +592,58 @@
     tooltip: 'The material name of "the block" (e.g. "STONE"), as text. Only available in block break/place events.',
   });
 
+  define('mc_value_has_permission', {
+    message0: 'is %1 allowed to %2 ?',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'PERMISSION' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'True if the player has this permission node (e.g. "essentials.fly").',
+  });
+
+  define('mc_value_is_sneaking', {
+    message0: 'is %1 sneaking?',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'True while the player is crouching.',
+  });
+
+  define('mc_value_is_op', {
+    message0: 'is %1 a server operator?',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'True if the player has server operator (OP) status.',
+  });
+
+  define('mc_value_has_item', {
+    message0: 'does %1 have %2 x %3 ?',
+    args0: [
+      { type: 'input_value', name: 'PLAYER' },
+      { type: 'field_dropdown', name: 'MATERIAL', options: MATERIALS },
+      { type: 'input_value', name: 'AMOUNT' },
+    ],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'True if the player\'s inventory contains at least that many of the item.',
+  });
+
+  define('mc_value_player_max_health', {
+    message0: '%1\'s max health',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'A player\'s maximum possible health (normally 20, but can be changed by other plugins/effects).',
+  });
+
+  define('mc_value_player_by_name', {
+    message0: '🧍 the online player named %1',
+    args0: [{ type: 'input_value', name: 'NAME' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'Looks up a player by exact username. Use this to target someone other than the event\'s own player -- e.g. plug it into any block\'s player socket. Empty/nothing if that player isn\'t online.',
+  });
+
   // ---------------------------------------------------------------------
   // Toolbox
   // ---------------------------------------------------------------------
@@ -568,23 +664,26 @@
         'mc_event_death', 'mc_event_block_break', 'mc_event_block_place', 'mc_event_interact', 'mc_event_damage',
         'mc_event_respawn', 'mc_event_drop_item', 'mc_event_toggle_sneak', 'mc_event_toggle_sprint',
         'mc_event_level_change', 'mc_event_entity_death', 'mc_event_block_ignite', 'mc_event_food_change',
+        'mc_event_command_preprocess', 'mc_event_inventory_click', 'mc_event_bed_enter', 'mc_event_pickup_item',
       ]),
       cat('Commands', COMMAND_COLOR, ['mc_command_define']),
       cat('Actions', ACTION_COLOR, [
         'mc_action_send_message', 'mc_action_broadcast', 'mc_action_send_title', 'mc_action_send_actionbar',
-        'mc_action_give_item', 'mc_action_equip_item', 'mc_action_clear_inventory', 'mc_action_teleport',
+        'mc_action_give_item', 'mc_action_equip_item', 'mc_action_remove_item', 'mc_action_clear_inventory', 'mc_action_teleport',
         'mc_action_set_health', 'mc_action_set_food', 'mc_action_give_xp', 'mc_action_set_level',
         'mc_action_add_potion_effect', 'mc_action_clear_potion_effects', 'mc_action_set_flying', 'mc_action_set_walk_speed',
         'mc_action_play_sound', 'mc_action_spawn_particle', 'mc_action_spawn_mob', 'mc_action_strike_lightning',
         'mc_action_create_explosion', 'mc_action_set_block_at_player', 'mc_action_set_time', 'mc_action_set_weather',
-        'mc_action_set_gamemode', 'mc_action_kick_player',
+        'mc_action_set_gamemode', 'mc_action_kick_player', 'mc_action_set_spawn_point',
+        'mc_action_grant_permission', 'mc_action_run_console_command',
         'mc_action_set_join_message', 'mc_action_set_quit_message', 'mc_action_cancel_event',
       ]),
       cat('Sensing', SENSING_COLOR, [
         'mc_value_event_player', 'mc_value_event_message', 'mc_value_event_block',
-        'mc_value_player_name', 'mc_value_player_health', 'mc_value_player_food', 'mc_value_player_level',
+        'mc_value_player_name', 'mc_value_player_health', 'mc_value_player_max_health', 'mc_value_player_food', 'mc_value_player_level',
         'mc_value_player_world_name', 'mc_value_player_x', 'mc_value_player_y', 'mc_value_player_z',
-        'mc_value_block_type', 'mc_value_online_count', 'mc_value_random_number',
+        'mc_value_block_type', 'mc_value_online_count', 'mc_value_random_number', 'mc_value_player_by_name',
+        'mc_value_has_permission', 'mc_value_is_sneaking', 'mc_value_is_op', 'mc_value_has_item',
         'mc_value_command_sender', 'mc_value_command_arg', 'mc_value_command_args_joined',
       ]),
       cat('Control', CONTROL_COLOR, [
