@@ -133,6 +133,12 @@
     return `${player}.teleport(new org.bukkit.Location(${player}.getWorld(), ${x}, ${y}, ${z}));\n`;
   };
 
+  F['mc_action_teleport_to_location'] = (block, g) => {
+    const player = playerInput(g, block);
+    const location = val(g, block, 'LOCATION', `${player}.getLocation()`);
+    return `${player}.teleport(${location});\n`;
+  };
+
   F['mc_action_set_health'] = (block, g) => {
     const player = playerInput(g, block);
     const amount = num(g, block, 'AMOUNT', 20);
@@ -394,6 +400,11 @@
   F['mc_value_player_z'] = (block, g) => {
     const player = playerInput(g, block);
     return [`${player}.getLocation().getZ()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_location'] = (block, g) => {
+    const player = playerInput(g, block);
+    return [`${player}.getLocation()`, Order.ATOMIC];
   };
 
   F['mc_value_online_count'] = () => ['getServer().getOnlinePlayers().size()', Order.ATOMIC];

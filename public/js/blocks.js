@@ -10,10 +10,17 @@
   const SENSING_COLOR = '#5CB1D6';
   const CONTROL_COLOR = '#FF8C1A';
 
+  // Every block renders its inputs inline on one row by default (e.g. "send
+  // [player] the message [text]") instead of Blockly's default of stacking
+  // each value input onto its own line below the block's label -- which is
+  // what made blocks look like disconnected config-card forms. Pass
+  // `inputsInline: false` explicitly for the rare block that genuinely
+  // needs the stacked layout (e.g. one with many inputs that wouldn't fit
+  // on one row).
   function define(type, json) {
     Blockly.Blocks[type] = {
       init: function () {
-        this.jsonInit(json);
+        this.jsonInit({ inputsInline: true, ...json });
       },
     };
   }
@@ -58,6 +65,13 @@
     ['mc_event_inventory_click', '🖱 when a player clicks in an inventory', 'Fires whenever a player clicks a slot in a chest, crafting table, their own inventory, etc.'],
     ['mc_event_bed_enter', '🛏 when a player gets in bed', 'Fires when a player tries to sleep.'],
     ['mc_event_pickup_item', '🫳 when a player picks up an item', 'Fires whenever a player picks an item up off the ground.'],
+    ['mc_event_kick', '👢 when a player is about to be kicked', 'Fires right before a player gets disconnected for being kicked. Cancel it to let them stay.'],
+    ['mc_event_change_world', '🌍 when a player changes world', 'Fires right after a player arrives in a different world (e.g. through a portal or teleport).'],
+    ['mc_event_teleport', '🌀 when a player teleports', 'Fires whenever a player is teleported, by a command, a portal, or a plugin.'],
+    ['mc_event_damage_by_entity', '⚔ when an entity is damaged by another entity', 'Fires on any entity-vs-entity damage (e.g. PvP or a player hitting a mob). Use "the player" for whoever dealt the damage.'],
+    ['mc_event_item_held', '🔢 when a player switches hotbar slot', 'Fires whenever a player scrolls to a different hotbar slot.'],
+    ['mc_event_vehicle_enter', '🚗 when a player enters a vehicle', 'Fires when a player gets into a boat, minecart, or similar.'],
+    ['mc_event_vehicle_exit', '🚪 when a player exits a vehicle', 'Fires when a player gets out of a boat, minecart, or similar.'],
   ];
   for (const [type, label, tooltip] of EVENT_HATS) {
     define(type, {
@@ -72,12 +86,14 @@
   // Custom command definition (also a hat block).
   // ---------------------------------------------------------------------
   define('mc_command_define', {
-    message0: '⚡ when someone runs the command /%1',
-    args0: [{ type: 'field_input', name: 'CMDNAME', text: 'heal' }],
-    message1: '📝 description: %1',
-    args1: [{ type: 'field_input', name: 'DESCRIPTION', text: 'A custom command' }],
-    message2: '%1',
-    args2: [{ type: 'input_statement', name: 'DO' }],
+    message0: '⚡ command /%1 — %2 %3',
+    args0: [
+      { type: 'field_input', name: 'CMDNAME', text: 'heal' },
+      { type: 'field_input', name: 'DESCRIPTION', text: 'A custom command' },
+      { type: 'input_dummy' },
+    ],
+    message1: '%1',
+    args1: [{ type: 'input_statement', name: 'DO' }],
     colour: COMMAND_COLOR,
     tooltip: 'Creates a brand new /command for your plugin. Anything connected below runs when a player types it.',
   });
@@ -126,7 +142,7 @@
 
   define('mc_action_send_message', {
     message0: '💬 send %1 the message %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'MESSAGE' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'MESSAGE' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -145,9 +161,9 @@
   define('mc_action_give_item', {
     message0: '🎁 give %1 %2 x %3',
     args0: [
-      { type: 'input_value', name: 'PLAYER' },
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
       { type: 'field_dropdown', name: 'MATERIAL', options: MATERIALS },
-      { type: 'input_value', name: 'AMOUNT' },
+      { type: 'input_value', name: 'AMOUNT', check: 'Number' },
     ],
     previousStatement: null,
     nextStatement: null,
@@ -158,10 +174,10 @@
   define('mc_action_teleport', {
     message0: '🚀 teleport %1 to X:%2 Y:%3 Z:%4',
     args0: [
-      { type: 'input_value', name: 'PLAYER' },
-      { type: 'input_value', name: 'X' },
-      { type: 'input_value', name: 'Y' },
-      { type: 'input_value', name: 'Z' },
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
+      { type: 'input_value', name: 'X', check: 'Number' },
+      { type: 'input_value', name: 'Y', check: 'Number' },
+      { type: 'input_value', name: 'Z', check: 'Number' },
     ],
     previousStatement: null,
     nextStatement: null,
@@ -169,9 +185,21 @@
     tooltip: 'Teleports a player to exact coordinates in their current world.',
   });
 
+  define('mc_action_teleport_to_location', {
+    message0: '🚀 teleport %1 to %2',
+    args0: [
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
+      { type: 'input_value', name: 'LOCATION', check: 'Location' },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Teleports a player to a location value (e.g. another player\'s location).',
+  });
+
   define('mc_action_set_health', {
     message0: '❤ set %1 health to %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'AMOUNT' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'AMOUNT', check: 'Number' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -180,7 +208,7 @@
 
   define('mc_action_set_food', {
     message0: '🍗 set %1 hunger to %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'AMOUNT' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'AMOUNT', check: 'Number' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -189,7 +217,7 @@
 
   define('mc_action_play_sound', {
     message0: '🔊 play sound %1 for %2',
-    args0: [{ type: 'field_dropdown', name: 'SOUND', options: SOUNDS }, { type: 'input_value', name: 'PLAYER' }],
+    args0: [{ type: 'field_dropdown', name: 'SOUND', options: SOUNDS }, { type: 'input_value', name: 'PLAYER', check: 'Player' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -200,8 +228,8 @@
     message0: '✨ show %1 particles (%2) at %3\'s location',
     args0: [
       { type: 'field_dropdown', name: 'PARTICLE', options: PARTICLES },
-      { type: 'input_value', name: 'COUNT' },
-      { type: 'input_value', name: 'PLAYER' },
+      { type: 'input_value', name: 'COUNT', check: 'Number' },
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
     ],
     previousStatement: null,
     nextStatement: null,
@@ -211,7 +239,7 @@
 
   define('mc_action_spawn_mob', {
     message0: '🐺 spawn a %1 near %2',
-    args0: [{ type: 'field_dropdown', name: 'ENTITY', options: MOBS }, { type: 'input_value', name: 'PLAYER' }],
+    args0: [{ type: 'field_dropdown', name: 'ENTITY', options: MOBS }, { type: 'input_value', name: 'PLAYER', check: 'Player' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -220,7 +248,7 @@
 
   define('mc_action_set_gamemode', {
     message0: '🎮 set %1 game mode to %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'field_dropdown', name: 'GAMEMODE', options: GAMEMODES }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'field_dropdown', name: 'GAMEMODE', options: GAMEMODES }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -229,7 +257,7 @@
 
   define('mc_action_kick_player', {
     message0: '👢 kick %1 with reason %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'REASON' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'REASON' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -264,7 +292,7 @@
 
   define('mc_action_wait_then', {
     message0: '⏳ wait %1 ticks (20 = 1 second), then: %2 %3',
-    args0: [{ type: 'input_value', name: 'TICKS' }, { type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }],
+    args0: [{ type: 'input_value', name: 'TICKS', check: 'Number' }, { type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }],
     previousStatement: null,
     nextStatement: null,
     colour: CONTROL_COLOR,
@@ -273,7 +301,7 @@
 
   define('mc_action_repeat_every_ticks', {
     message0: '🔁 every %1 ticks, repeat: %2 %3',
-    args0: [{ type: 'input_value', name: 'PERIOD' }, { type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }],
+    args0: [{ type: 'input_value', name: 'PERIOD', check: 'Number' }, { type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }],
     previousStatement: null,
     nextStatement: null,
     colour: CONTROL_COLOR,
@@ -282,7 +310,7 @@
 
   define('mc_action_set_time', {
     message0: '🕐 set %1\'s world time to %2 ticks',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'TICKS' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'TICKS', check: 'Number' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -291,7 +319,7 @@
 
   define('mc_action_set_weather', {
     message0: '🌦 set %1\'s world weather to %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'field_dropdown', name: 'WEATHER', options: WEATHER_OPTIONS }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'field_dropdown', name: 'WEATHER', options: WEATHER_OPTIONS }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -300,7 +328,7 @@
 
   define('mc_action_strike_lightning', {
     message0: '⚡ strike lightning at %1',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -309,7 +337,7 @@
 
   define('mc_action_create_explosion', {
     message0: '💥 explode at %1 with power %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'POWER' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'POWER', check: 'Number' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -319,10 +347,10 @@
   define('mc_action_add_potion_effect', {
     message0: '🧪 give %1 the %2 effect for %3 seconds (level %4)',
     args0: [
-      { type: 'input_value', name: 'PLAYER' },
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
       { type: 'field_dropdown', name: 'EFFECT', options: POTION_EFFECTS },
-      { type: 'input_value', name: 'SECONDS' },
-      { type: 'input_value', name: 'LEVEL' },
+      { type: 'input_value', name: 'SECONDS', check: 'Number' },
+      { type: 'input_value', name: 'LEVEL', check: 'Number' },
     ],
     previousStatement: null,
     nextStatement: null,
@@ -332,7 +360,7 @@
 
   define('mc_action_clear_potion_effects', {
     message0: '🧪 clear all effects from %1',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -341,7 +369,7 @@
 
   define('mc_action_set_flying', {
     message0: '🕊 set %1\'s flying to %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'field_dropdown', name: 'STATE', options: ON_OFF }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'field_dropdown', name: 'STATE', options: ON_OFF }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -350,7 +378,7 @@
 
   define('mc_action_set_walk_speed', {
     message0: '👟 set %1\'s walk speed to %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'SPEED' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'SPEED', check: 'Number' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -359,7 +387,7 @@
 
   define('mc_action_clear_inventory', {
     message0: '🎒 clear %1\'s inventory',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -368,7 +396,7 @@
 
   define('mc_action_give_xp', {
     message0: '⭐ give %1 %2 XP points',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'AMOUNT' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'AMOUNT', check: 'Number' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -377,7 +405,7 @@
 
   define('mc_action_set_level', {
     message0: '⭐ set %1\'s XP level to %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'LEVEL' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'LEVEL', check: 'Number' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -386,7 +414,7 @@
 
   define('mc_action_equip_item', {
     message0: '✋ put %1 in %2\'s hand',
-    args0: [{ type: 'field_dropdown', name: 'MATERIAL', options: MATERIALS }, { type: 'input_value', name: 'PLAYER' }],
+    args0: [{ type: 'field_dropdown', name: 'MATERIAL', options: MATERIALS }, { type: 'input_value', name: 'PLAYER', check: 'Player' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -395,7 +423,7 @@
 
   define('mc_action_set_block_at_player', {
     message0: '🧱 turn the block under %1 into %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'field_dropdown', name: 'MATERIAL2', options: MATERIALS }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'field_dropdown', name: 'MATERIAL2', options: MATERIALS }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -404,7 +432,7 @@
 
   define('mc_action_send_title', {
     message0: '🏆 show %1 the title %2 and subtitle %3',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'TITLE' }, { type: 'input_value', name: 'SUBTITLE' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'TITLE' }, { type: 'input_value', name: 'SUBTITLE' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -413,7 +441,7 @@
 
   define('mc_action_send_actionbar', {
     message0: '📊 show %1 the action bar text %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'TEXT' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'TEXT' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -424,8 +452,8 @@
     message0: '🗑 remove %1 x %2 from %3\'s inventory',
     args0: [
       { type: 'field_dropdown', name: 'MATERIAL', options: MATERIALS },
-      { type: 'input_value', name: 'AMOUNT' },
-      { type: 'input_value', name: 'PLAYER' },
+      { type: 'input_value', name: 'AMOUNT', check: 'Number' },
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
     ],
     previousStatement: null,
     nextStatement: null,
@@ -444,7 +472,7 @@
 
   define('mc_action_set_spawn_point', {
     message0: '🛏 set %1\'s spawn point to their current location',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -453,7 +481,7 @@
 
   define('mc_action_grant_permission', {
     message0: '🔑 give %1 the permission %2',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'PERMISSION' }],
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'PERMISSION' }],
     previousStatement: null,
     nextStatement: null,
     colour: ACTION_COLOR,
@@ -465,36 +493,36 @@
   // ---------------------------------------------------------------------
   define('mc_value_event_player', {
     message0: '🧍 the player',
-    output: null,
+    output: 'Player',
     colour: SENSING_COLOR,
     tooltip: 'The player involved in this event/command.',
   });
 
   define('mc_value_event_message', {
     message0: '💬 the message',
-    output: null,
+    output: 'String',
     colour: SENSING_COLOR,
     tooltip: 'Only available inside "when a player sends a chat message".',
   });
 
   define('mc_value_event_block', {
     message0: '🧱 the block',
-    output: null,
+    output: 'Block',
     colour: SENSING_COLOR,
     tooltip: 'Only available inside block break/place events.',
   });
 
   define('mc_value_player_name', {
     message0: '%1\'s name',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'String',
     colour: SENSING_COLOR,
     tooltip: 'The player\'s username, as text.',
   });
 
   define('mc_value_command_sender', {
     message0: '⚡ whoever ran the command',
-    output: null,
+    output: 'CommandSender',
     colour: SENSING_COLOR,
     tooltip: 'Only available inside a command block.',
   });
@@ -502,116 +530,124 @@
   define('mc_value_command_arg', {
     message0: 'argument # %1',
     args0: [{ type: 'field_number', name: 'INDEX', value: 1, min: 1, precision: 1 }],
-    output: null,
+    output: 'String',
     colour: SENSING_COLOR,
     tooltip: 'Whatever the player typed after the command name, e.g. /heal 50 -> argument #1 is "50". Safe even if not enough arguments were given.',
   });
 
   define('mc_value_command_args_joined', {
     message0: '⚡ all the arguments, joined with spaces',
-    output: null,
+    output: 'String',
     colour: SENSING_COLOR,
     tooltip: 'Only available inside a command block.',
   });
 
   define('mc_value_player_health', {
     message0: '%1\'s health',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'A number from 0 to 20 (full hearts).',
   });
 
   define('mc_value_player_food', {
     message0: '%1\'s hunger',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'A number from 0 to 20 (full drumsticks).',
   });
 
   define('mc_value_player_level', {
     message0: '%1\'s XP level',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'The number shown above a player\'s XP bar.',
   });
 
   define('mc_value_player_world_name', {
     message0: '%1\'s world name',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'String',
     colour: SENSING_COLOR,
     tooltip: 'The name of the world a player is standing in, as text.',
   });
 
   define('mc_value_player_x', {
     message0: '%1\'s X position',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'How far east/west a player is standing.',
   });
 
   define('mc_value_player_y', {
     message0: '%1\'s Y position',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'How high up a player is standing.',
   });
 
   define('mc_value_player_z', {
     message0: '%1\'s Z position',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'How far north/south a player is standing.',
   });
 
+  define('mc_value_player_location', {
+    message0: '%1\'s location',
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Location',
+    colour: SENSING_COLOR,
+    tooltip: 'A player\'s exact position, as a single Location value -- plug this into "teleport to" instead of separate X/Y/Z numbers.',
+  });
+
   define('mc_value_online_count', {
     message0: '🧍 number of players online',
-    output: null,
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'How many players are currently on the server.',
   });
 
   define('mc_value_random_number', {
     message0: '🎲 random number from 0 to %1',
-    args0: [{ type: 'input_value', name: 'MAX' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'MAX', check: 'Number' }],
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'Picks a random whole number, including both 0 and the max.',
   });
 
   define('mc_value_block_type', {
     message0: '🧱 the block\'s type',
-    output: null,
+    output: 'String',
     colour: SENSING_COLOR,
     tooltip: 'The material name of "the block" (e.g. "STONE"), as text. Only available in block break/place events.',
   });
 
   define('mc_value_has_permission', {
     message0: 'is %1 allowed to %2 ?',
-    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'PERMISSION' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'PERMISSION' }],
+    output: 'Boolean',
     colour: SENSING_COLOR,
     tooltip: 'True if the player has this permission node (e.g. "essentials.fly").',
   });
 
   define('mc_value_is_sneaking', {
     message0: 'is %1 sneaking?',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Boolean',
     colour: SENSING_COLOR,
     tooltip: 'True while the player is crouching.',
   });
 
   define('mc_value_is_op', {
     message0: 'is %1 a server operator?',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Boolean',
     colour: SENSING_COLOR,
     tooltip: 'True if the player has server operator (OP) status.',
   });
@@ -619,19 +655,19 @@
   define('mc_value_has_item', {
     message0: 'does %1 have %2 x %3 ?',
     args0: [
-      { type: 'input_value', name: 'PLAYER' },
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
       { type: 'field_dropdown', name: 'MATERIAL', options: MATERIALS },
-      { type: 'input_value', name: 'AMOUNT' },
+      { type: 'input_value', name: 'AMOUNT', check: 'Number' },
     ],
-    output: null,
+    output: 'Boolean',
     colour: SENSING_COLOR,
     tooltip: 'True if the player\'s inventory contains at least that many of the item.',
   });
 
   define('mc_value_player_max_health', {
     message0: '%1\'s max health',
-    args0: [{ type: 'input_value', name: 'PLAYER' }],
-    output: null,
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
+    output: 'Number',
     colour: SENSING_COLOR,
     tooltip: 'A player\'s maximum possible health (normally 20, but can be changed by other plugins/effects).',
   });
@@ -639,7 +675,7 @@
   define('mc_value_player_by_name', {
     message0: '🧍 the online player named %1',
     args0: [{ type: 'input_value', name: 'NAME' }],
-    output: null,
+    output: 'Player',
     colour: SENSING_COLOR,
     tooltip: 'Looks up a player by exact username. Use this to target someone other than the event\'s own player -- e.g. plug it into any block\'s player socket. Empty/nothing if that player isn\'t online.',
   });
@@ -665,11 +701,13 @@
         'mc_event_respawn', 'mc_event_drop_item', 'mc_event_toggle_sneak', 'mc_event_toggle_sprint',
         'mc_event_level_change', 'mc_event_entity_death', 'mc_event_block_ignite', 'mc_event_food_change',
         'mc_event_command_preprocess', 'mc_event_inventory_click', 'mc_event_bed_enter', 'mc_event_pickup_item',
+        'mc_event_kick', 'mc_event_change_world', 'mc_event_teleport', 'mc_event_damage_by_entity',
+        'mc_event_item_held', 'mc_event_vehicle_enter', 'mc_event_vehicle_exit',
       ]),
       cat('Commands', COMMAND_COLOR, ['mc_command_define']),
       cat('Actions', ACTION_COLOR, [
         'mc_action_send_message', 'mc_action_broadcast', 'mc_action_send_title', 'mc_action_send_actionbar',
-        'mc_action_give_item', 'mc_action_equip_item', 'mc_action_remove_item', 'mc_action_clear_inventory', 'mc_action_teleport',
+        'mc_action_give_item', 'mc_action_equip_item', 'mc_action_remove_item', 'mc_action_clear_inventory', 'mc_action_teleport', 'mc_action_teleport_to_location',
         'mc_action_set_health', 'mc_action_set_food', 'mc_action_give_xp', 'mc_action_set_level',
         'mc_action_add_potion_effect', 'mc_action_clear_potion_effects', 'mc_action_set_flying', 'mc_action_set_walk_speed',
         'mc_action_play_sound', 'mc_action_spawn_particle', 'mc_action_spawn_mob', 'mc_action_strike_lightning',
@@ -681,7 +719,7 @@
       cat('Sensing', SENSING_COLOR, [
         'mc_value_event_player', 'mc_value_event_message', 'mc_value_event_block',
         'mc_value_player_name', 'mc_value_player_health', 'mc_value_player_max_health', 'mc_value_player_food', 'mc_value_player_level',
-        'mc_value_player_world_name', 'mc_value_player_x', 'mc_value_player_y', 'mc_value_player_z',
+        'mc_value_player_world_name', 'mc_value_player_x', 'mc_value_player_y', 'mc_value_player_z', 'mc_value_player_location',
         'mc_value_block_type', 'mc_value_online_count', 'mc_value_random_number', 'mc_value_player_by_name',
         'mc_value_has_permission', 'mc_value_is_sneaking', 'mc_value_is_op', 'mc_value_has_item',
         'mc_value_command_sender', 'mc_value_command_arg', 'mc_value_command_args_joined',
