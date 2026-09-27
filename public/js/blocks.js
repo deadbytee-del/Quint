@@ -46,6 +46,14 @@
     ['mc_event_block_place', '🧱 when a block is placed', 'Fires whenever any player places a block.'],
     ['mc_event_interact', '👆 when a player interacts (clicks)', 'Fires when a player left/right-clicks with an item or block.'],
     ['mc_event_damage', '🩸 when an entity takes damage', 'Fires whenever any entity (player or mob) takes damage.'],
+    ['mc_event_respawn', '💫 when a player respawns', 'Fires right after a player comes back to life.'],
+    ['mc_event_drop_item', '📤 when a player drops an item', 'Fires whenever a player drops something from their inventory.'],
+    ['mc_event_toggle_sneak', '🤫 when a player starts/stops sneaking', 'Fires every time a player toggles sneaking.'],
+    ['mc_event_toggle_sprint', '🏃 when a player starts/stops sprinting', 'Fires every time a player toggles sprinting.'],
+    ['mc_event_level_change', '⭐ when a player\'s XP level changes', 'Fires whenever a player levels up or down.'],
+    ['mc_event_entity_death', '💀 when any mob dies', 'Fires whenever a mob (or player) dies.'],
+    ['mc_event_block_ignite', '🔥 when a block catches fire', 'Fires whenever fire starts spreading to a block.'],
+    ['mc_event_food_change', '🍗 when hunger changes', 'Fires whenever a player\'s hunger level changes.'],
   ];
   for (const [type, label, tooltip] of EVENT_HATS) {
     define(type, {
@@ -100,6 +108,17 @@
     ['Wither Skeleton', 'WITHER_SKELETON'], ['Blaze', 'BLAZE'], ['Ghast', 'GHAST'],
   ];
   const GAMEMODES = [['Survival', 'SURVIVAL'], ['Creative', 'CREATIVE'], ['Adventure', 'ADVENTURE'], ['Spectator', 'SPECTATOR']];
+  const WEATHER_OPTIONS = [['Clear', 'CLEAR'], ['Storm', 'STORM']];
+  const ON_OFF = [['On', 'ON'], ['Off', 'OFF']];
+  const POTION_EFFECTS = [
+    ['Speed', 'SPEED'], ['Slowness', 'SLOWNESS'], ['Jump Boost', 'JUMP_BOOST'], ['Strength', 'STRENGTH'],
+    ['Instant Health', 'INSTANT_HEALTH'], ['Regeneration', 'REGENERATION'], ['Fire Resistance', 'FIRE_RESISTANCE'],
+    ['Water Breathing', 'WATER_BREATHING'], ['Invisibility', 'INVISIBILITY'], ['Night Vision', 'NIGHT_VISION'],
+    ['Health Boost', 'HEALTH_BOOST'], ['Absorption', 'ABSORPTION'], ['Levitation', 'LEVITATION'],
+    ['Glowing', 'GLOWING'], ['Luck', 'LUCK'], ['Slow Falling', 'SLOW_FALLING'], ['Poison', 'POISON'],
+    ['Weakness', 'WEAKNESS'], ['Hunger', 'HUNGER'], ['Blindness', 'BLINDNESS'], ['Nausea', 'NAUSEA'],
+    ['Mining Fatigue', 'MINING_FATIGUE'],
+  ];
 
   define('mc_action_send_message', {
     message0: '💬 send %1 the message %2',
@@ -248,6 +267,155 @@
     tooltip: 'Schedules the connected blocks to run later, without freezing the server. Blocks placed AFTER this one still run immediately.',
   });
 
+  define('mc_action_repeat_every_ticks', {
+    message0: '🔁 every %1 ticks, repeat: %2 %3',
+    args0: [{ type: 'input_value', name: 'PERIOD' }, { type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: CONTROL_COLOR,
+    tooltip: 'Runs the connected blocks over and over, forever, every N ticks (20 = 1 second) -- without freezing the server.',
+  });
+
+  define('mc_action_set_time', {
+    message0: '🕐 set %1\'s world time to %2 ticks',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'TICKS' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: '0 = sunrise, 6000 = noon, 12000 = sunset, 18000 = midnight.',
+  });
+
+  define('mc_action_set_weather', {
+    message0: '🌦 set %1\'s world weather to %2',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'field_dropdown', name: 'WEATHER', options: WEATHER_OPTIONS }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Changes the weather in that player\'s world.',
+  });
+
+  define('mc_action_strike_lightning', {
+    message0: '⚡ strike lightning at %1',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Strikes visual + damaging lightning at a player\'s location.',
+  });
+
+  define('mc_action_create_explosion', {
+    message0: '💥 explode at %1 with power %2',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'POWER' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Creates an explosion (like TNT) at a player\'s location. Power 4 = about one TNT block.',
+  });
+
+  define('mc_action_add_potion_effect', {
+    message0: '🧪 give %1 the %2 effect for %3 seconds (level %4)',
+    args0: [
+      { type: 'input_value', name: 'PLAYER' },
+      { type: 'field_dropdown', name: 'EFFECT', options: POTION_EFFECTS },
+      { type: 'input_value', name: 'SECONDS' },
+      { type: 'input_value', name: 'LEVEL' },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Applies a potion effect. Level 1 is the normal strength.',
+  });
+
+  define('mc_action_clear_potion_effects', {
+    message0: '🧪 clear all effects from %1',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Removes every active potion effect from a player.',
+  });
+
+  define('mc_action_set_flying', {
+    message0: '🕊 set %1\'s flying to %2',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'field_dropdown', name: 'STATE', options: ON_OFF }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Lets a player fly (or stops them from flying).',
+  });
+
+  define('mc_action_set_walk_speed', {
+    message0: '👟 set %1\'s walk speed to %2',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'SPEED' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Normal speed is 0.2. Try values between -1 and 1.',
+  });
+
+  define('mc_action_clear_inventory', {
+    message0: '🎒 clear %1\'s inventory',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Empties everything out of a player\'s inventory.',
+  });
+
+  define('mc_action_give_xp', {
+    message0: '⭐ give %1 %2 XP points',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'AMOUNT' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Adds experience points to a player.',
+  });
+
+  define('mc_action_set_level', {
+    message0: '⭐ set %1\'s XP level to %2',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'LEVEL' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Sets the number shown above a player\'s XP bar.',
+  });
+
+  define('mc_action_equip_item', {
+    message0: '✋ put %1 in %2\'s hand',
+    args0: [{ type: 'field_dropdown', name: 'MATERIAL', options: MATERIALS }, { type: 'input_value', name: 'PLAYER' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Equips an item directly into a player\'s main hand.',
+  });
+
+  define('mc_action_set_block_at_player', {
+    message0: '🧱 turn the block under %1 into %2',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'field_dropdown', name: 'MATERIAL2', options: MATERIALS }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Changes the block at a player\'s exact location.',
+  });
+
+  define('mc_action_send_title', {
+    message0: '🏆 show %1 the title %2 and subtitle %3',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'TITLE' }, { type: 'input_value', name: 'SUBTITLE' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Shows big text in the middle of a player\'s screen, like a level-up banner.',
+  });
+
+  define('mc_action_send_actionbar', {
+    message0: '📊 show %1 the action bar text %2',
+    args0: [{ type: 'input_value', name: 'PLAYER' }, { type: 'input_value', name: 'TEXT' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Shows a short message just above a player\'s hotbar.',
+  });
+
   // ---------------------------------------------------------------------
   // Sensing / value reporters.
   // ---------------------------------------------------------------------
@@ -302,6 +470,84 @@
     tooltip: 'Only available inside a command block.',
   });
 
+  define('mc_value_player_health', {
+    message0: '%1\'s health',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'A number from 0 to 20 (full hearts).',
+  });
+
+  define('mc_value_player_food', {
+    message0: '%1\'s hunger',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'A number from 0 to 20 (full drumsticks).',
+  });
+
+  define('mc_value_player_level', {
+    message0: '%1\'s XP level',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'The number shown above a player\'s XP bar.',
+  });
+
+  define('mc_value_player_world_name', {
+    message0: '%1\'s world name',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'The name of the world a player is standing in, as text.',
+  });
+
+  define('mc_value_player_x', {
+    message0: '%1\'s X position',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'How far east/west a player is standing.',
+  });
+
+  define('mc_value_player_y', {
+    message0: '%1\'s Y position',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'How high up a player is standing.',
+  });
+
+  define('mc_value_player_z', {
+    message0: '%1\'s Z position',
+    args0: [{ type: 'input_value', name: 'PLAYER' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'How far north/south a player is standing.',
+  });
+
+  define('mc_value_online_count', {
+    message0: '🧍 number of players online',
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'How many players are currently on the server.',
+  });
+
+  define('mc_value_random_number', {
+    message0: '🎲 random number from 0 to %1',
+    args0: [{ type: 'input_value', name: 'MAX' }],
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'Picks a random whole number, including both 0 and the max.',
+  });
+
+  define('mc_value_block_type', {
+    message0: '🧱 the block\'s type',
+    output: null,
+    colour: SENSING_COLOR,
+    tooltip: 'The material name of "the block" (e.g. "STONE"), as text. Only available in block break/place events.',
+  });
+
   // ---------------------------------------------------------------------
   // Toolbox
   // ---------------------------------------------------------------------
@@ -320,19 +566,31 @@
       cat('Events', EVENT_COLOR, [
         'mc_on_enable', 'mc_on_disable', 'mc_event_join', 'mc_event_quit', 'mc_event_chat',
         'mc_event_death', 'mc_event_block_break', 'mc_event_block_place', 'mc_event_interact', 'mc_event_damage',
+        'mc_event_respawn', 'mc_event_drop_item', 'mc_event_toggle_sneak', 'mc_event_toggle_sprint',
+        'mc_event_level_change', 'mc_event_entity_death', 'mc_event_block_ignite', 'mc_event_food_change',
       ]),
       cat('Commands', COMMAND_COLOR, ['mc_command_define']),
       cat('Actions', ACTION_COLOR, [
-        'mc_action_send_message', 'mc_action_broadcast', 'mc_action_give_item', 'mc_action_teleport',
-        'mc_action_set_health', 'mc_action_set_food', 'mc_action_play_sound', 'mc_action_spawn_particle',
-        'mc_action_spawn_mob', 'mc_action_set_gamemode', 'mc_action_kick_player',
+        'mc_action_send_message', 'mc_action_broadcast', 'mc_action_send_title', 'mc_action_send_actionbar',
+        'mc_action_give_item', 'mc_action_equip_item', 'mc_action_clear_inventory', 'mc_action_teleport',
+        'mc_action_set_health', 'mc_action_set_food', 'mc_action_give_xp', 'mc_action_set_level',
+        'mc_action_add_potion_effect', 'mc_action_clear_potion_effects', 'mc_action_set_flying', 'mc_action_set_walk_speed',
+        'mc_action_play_sound', 'mc_action_spawn_particle', 'mc_action_spawn_mob', 'mc_action_strike_lightning',
+        'mc_action_create_explosion', 'mc_action_set_block_at_player', 'mc_action_set_time', 'mc_action_set_weather',
+        'mc_action_set_gamemode', 'mc_action_kick_player',
         'mc_action_set_join_message', 'mc_action_set_quit_message', 'mc_action_cancel_event',
       ]),
       cat('Sensing', SENSING_COLOR, [
         'mc_value_event_player', 'mc_value_event_message', 'mc_value_event_block',
-        'mc_value_player_name', 'mc_value_command_sender', 'mc_value_command_arg', 'mc_value_command_args_joined',
+        'mc_value_player_name', 'mc_value_player_health', 'mc_value_player_food', 'mc_value_player_level',
+        'mc_value_player_world_name', 'mc_value_player_x', 'mc_value_player_y', 'mc_value_player_z',
+        'mc_value_block_type', 'mc_value_online_count', 'mc_value_random_number',
+        'mc_value_command_sender', 'mc_value_command_arg', 'mc_value_command_args_joined',
       ]),
-      cat('Control', CONTROL_COLOR, ['controls_if', 'controls_repeat_ext', 'controls_whileUntil', 'mc_action_wait_then']),
+      cat('Control', CONTROL_COLOR, [
+        'controls_if', 'controls_repeat_ext', 'controls_whileUntil',
+        'mc_action_wait_then', 'mc_action_repeat_every_ticks',
+      ]),
       { kind: 'category', name: 'Logic', colour: '#5C81A6', contents: [
         { kind: 'block', type: 'logic_compare' },
         { kind: 'block', type: 'logic_operation' },
