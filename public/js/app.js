@@ -168,24 +168,44 @@
   // -----------------------------------------------------------------------
   // Java code generation (assembles ONE Main.java from the workspace)
   // -----------------------------------------------------------------------
+  // `vars` lists which bare Java identifiers this event's `bind` line
+  // actually declares -- used to gate blocks like "the message" or "the
+  // block" so they only ever generate code where that identifier exists.
+  // `cancellable` reflects whether the real Bukkit/Paper event class
+  // implements Cancellable (verified against the vendored paper-api.jar,
+  // not assumed -- a few of these, like PlayerDeathEvent, are cancellable
+  // on Paper even though vanilla Spigot habit says otherwise).
   const EVENT_INFO = {
-    mc_event_join: { cls: 'org.bukkit.event.player.PlayerJoinEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
-    mc_event_quit: { cls: 'org.bukkit.event.player.PlayerQuitEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
-    mc_event_chat: { cls: 'org.bukkit.event.player.AsyncPlayerChatEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); String message = event.getMessage();' },
-    mc_event_death: { cls: 'org.bukkit.event.entity.PlayerDeathEvent', bind: 'org.bukkit.entity.Player player = event.getEntity();' },
-    mc_event_block_break: { cls: 'org.bukkit.event.block.BlockBreakEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();' },
-    mc_event_block_place: { cls: 'org.bukkit.event.block.BlockPlaceEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();' },
-    mc_event_interact: { cls: 'org.bukkit.event.player.PlayerInteractEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
-    mc_event_damage: { cls: 'org.bukkit.event.entity.EntityDamageEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;' },
-    mc_event_respawn: { cls: 'org.bukkit.event.player.PlayerRespawnEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
-    mc_event_drop_item: { cls: 'org.bukkit.event.player.PlayerDropItemEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
-    mc_event_toggle_sneak: { cls: 'org.bukkit.event.player.PlayerToggleSneakEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
-    mc_event_toggle_sprint: { cls: 'org.bukkit.event.player.PlayerToggleSprintEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
-    mc_event_level_change: { cls: 'org.bukkit.event.player.PlayerLevelChangeEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
-    mc_event_entity_death: { cls: 'org.bukkit.event.entity.EntityDeathEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;' },
-    mc_event_block_ignite: { cls: 'org.bukkit.event.block.BlockIgniteEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();' },
-    mc_event_food_change: { cls: 'org.bukkit.event.entity.FoodLevelChangeEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;' },
+    mc_event_join: { cls: 'org.bukkit.event.player.PlayerJoinEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: false, hasJoinMsg: true },
+    mc_event_quit: { cls: 'org.bukkit.event.player.PlayerQuitEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: false, hasQuitMsg: true },
+    mc_event_chat: { cls: 'org.bukkit.event.player.AsyncPlayerChatEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); String message = event.getMessage();', vars: ['player', 'message'], cancellable: true },
+    mc_event_death: { cls: 'org.bukkit.event.entity.PlayerDeathEvent', bind: 'org.bukkit.entity.Player player = event.getEntity();', vars: ['player'], cancellable: true },
+    mc_event_block_break: { cls: 'org.bukkit.event.block.BlockBreakEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();', vars: ['player', 'block'], cancellable: true },
+    mc_event_block_place: { cls: 'org.bukkit.event.block.BlockPlaceEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();', vars: ['player', 'block'], cancellable: true },
+    mc_event_interact: { cls: 'org.bukkit.event.player.PlayerInteractEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_damage: { cls: 'org.bukkit.event.entity.EntityDamageEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;', vars: ['player'], cancellable: true },
+    mc_event_respawn: { cls: 'org.bukkit.event.player.PlayerRespawnEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: false },
+    mc_event_drop_item: { cls: 'org.bukkit.event.player.PlayerDropItemEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_toggle_sneak: { cls: 'org.bukkit.event.player.PlayerToggleSneakEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_toggle_sprint: { cls: 'org.bukkit.event.player.PlayerToggleSprintEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: true },
+    mc_event_level_change: { cls: 'org.bukkit.event.player.PlayerLevelChangeEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();', vars: ['player'], cancellable: false },
+    mc_event_entity_death: { cls: 'org.bukkit.event.entity.EntityDeathEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;', vars: ['player'], cancellable: true },
+    mc_event_block_ignite: { cls: 'org.bukkit.event.block.BlockIgniteEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();', vars: ['player', 'block'], cancellable: true },
+    mc_event_food_change: { cls: 'org.bukkit.event.entity.FoodLevelChangeEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;', vars: ['player'], cancellable: true },
   };
+
+  // Contexts that aren't an EVENT_INFO event but still generate a method
+  // body: plugin start/stop have no bound identifiers at all, and a
+  // command body binds `player` (cast from the sender), `sender` and `args`.
+  const NO_CONTEXT = { vars: [], cancellable: false };
+  const COMMAND_CONTEXT = { vars: ['player', 'sender', 'args'], cancellable: false };
+
+  function setGenScope(Java, ctx) {
+    Java.scopeVars = new Set(ctx.vars);
+    Java.cancellable = !!ctx.cancellable;
+    Java.hasJoinMsg = !!ctx.hasJoinMsg;
+    Java.hasQuitMsg = !!ctx.hasQuitMsg;
+  }
 
   function generateMainJava() {
     const Java = window.QuintJava;
@@ -201,12 +221,14 @@
       .map((v) => `    double ${Java.getVariableName(v.getId())} = 0;`)
       .join('\n');
 
+    setGenScope(Java, NO_CONTEXT);
     const enableBody = enableBlocks.map((b) => Java.statementToCode(b, 'DO')).join('');
     const disableBody = disableBlocks.map((b) => Java.statementToCode(b, 'DO')).join('');
 
     let eventMethods = '';
     eventBlocks.forEach((b, i) => {
       const info = EVENT_INFO[b.type];
+      setGenScope(Java, info);
       const body = Java.statementToCode(b, 'DO');
       eventMethods += `    @org.bukkit.event.EventHandler\n    public void quintEvent${i}(${info.cls} event) {\n        ${info.bind}\n${body}    }\n\n`;
     });
@@ -218,6 +240,7 @@
       const name = sanitizeCmdName(b.getFieldValue('CMDNAME'));
       const description = b.getFieldValue('DESCRIPTION') || 'A custom command';
       commands.push({ name, description, usage: `/${name}` });
+      setGenScope(Java, COMMAND_CONTEXT);
       const body = Java.statementToCode(b, 'DO');
       commandSwitch += `                case "${name}": {\n                    org.bukkit.entity.Player player = (sender instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) sender : null;\n${body}                    return true;\n                }\n`;
       registerCommands += `        if (getCommand("${name}") != null) { getCommand("${name}").setExecutor(this); }\n`;
