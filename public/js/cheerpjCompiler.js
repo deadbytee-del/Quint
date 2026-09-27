@@ -16,14 +16,17 @@
   const CHEERPJ_LOADER_URL = 'https://cjrtnc.leaningtech.com/4.3/loader.js';
   const ECJ_CLASSPATH = '/app/vendor/ecj.jar';
   const CFR_CLASSPATH = '/app/vendor/cfr.jar';
-  const PLUGIN_COMPILE_CLASSPATH = [
-    '/app/vendor/paper-api.jar',
-    '/app/vendor/adventure-api.jar',
-    '/app/vendor/adventure-key.jar',
-    '/app/vendor/examination-api.jar',
-    '/app/vendor/examination-string.jar',
-    '/app/vendor/bungeecord-chat.jar',
-  ].join(':');
+  const DEFAULT_VENDOR_DIR = 'mc1.20.4';
+
+  // Each supported Minecraft/Paper version has its own vendored paper-api.jar
+  // (+ matching adventure/examination/bungeecord-chat versions) under
+  // public/vendor/<vendorDir>/ -- see app.js's MC_VERSIONS table.
+  function pluginClasspathFor(vendorDir) {
+    return [
+      'paper-api.jar', 'adventure-api.jar', 'adventure-key.jar',
+      'examination-api.jar', 'examination-string.jar', 'bungeecord-chat.jar',
+    ].map((f) => `/app/vendor/${vendorDir || DEFAULT_VENDOR_DIR}/${f}`).join(':');
+  }
 
   let initPromise = null;
 
@@ -108,6 +111,7 @@
       packageName: opts.packageName,
       mainClass: opts.mainClass,
       javaSource: opts.javaSource,
+      vendorDir: opts.vendorDir,
     });
     if (!result.ok) {
       throw Object.assign(new Error('Compilation failed'), { log: result.log, toolingError: result.toolingError });
@@ -166,7 +170,7 @@
         'org.eclipse.jdt.internal.compiler.batch.Main',
         ECJ_CLASSPATH,
         '-8',
-        '-classpath', PLUGIN_COMPILE_CLASSPATH,
+        '-classpath', pluginClasspathFor(opts.vendorDir),
         '-d', outDir,
         sourcePath
       )
