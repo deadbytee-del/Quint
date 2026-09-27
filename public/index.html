@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quint — the world's easiest Minecraft plugin creator</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<header id="topbar">
+  <div id="brand">
+    <span id="brand-icon">🟩</span>
+    <span id="brand-name">Quint</span>
+    <span id="brand-tag">block-code your own Minecraft plugin</span>
+  </div>
+
+  <div id="project-info">
+    <input id="project-name-input" type="text" value="MyFirstPlugin" spellcheck="false" title="Plugin name" />
+  </div>
+
+  <div id="toolbar-actions">
+    <button class="tb-btn" id="btn-new">🆕 New</button>
+    <button class="tb-btn" id="btn-examples">📚 Examples</button>
+    <button class="tb-btn" id="btn-save">💾 Save</button>
+    <button class="tb-btn" id="btn-load">📂 Load</button>
+    <input id="file-load-input" type="file" accept=".json" hidden />
+    <button class="tb-btn" id="btn-settings">⚙️ Settings</button>
+    <button class="tb-btn" id="btn-import-jar">🧩 Import .jar</button>
+    <input id="file-jar-input" type="file" accept=".jar" hidden />
+    <button class="tb-btn primary" id="btn-view-code">👀 View Code</button>
+    <button class="tb-btn success" id="btn-build-jar">▶️ Build Plugin</button>
+  </div>
+</header>
+
+<main id="app">
+  <div id="blockly-area">
+    <div id="blocklyDiv"></div>
+  </div>
+</main>
+
+<footer id="statusbar">
+  <span id="status-text">Drag blocks from the left to build your plugin. Nothing is running yet.</span>
+</footer>
+
+<!-- ============ Modals ============ -->
+
+<div class="modal-backdrop" id="modal-settings" hidden>
+  <div class="modal">
+    <h2>⚙️ Plugin Settings</h2>
+    <label>Plugin name<input id="set-name" type="text" /></label>
+    <label>Package name<input id="set-package" type="text" placeholder="com.yourname.plugin" /></label>
+    <label>Version<input id="set-version" type="text" placeholder="1.0.0" /></label>
+    <label>Description<input id="set-description" type="text" /></label>
+    <label>Author<input id="set-author" type="text" /></label>
+    <label>Minecraft / Paper API version
+      <select id="set-mcversion">
+        <option value="1.21">1.21</option>
+        <option value="1.20" selected>1.20</option>
+        <option value="1.19">1.19</option>
+      </select>
+    </label>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Cancel</button>
+      <button class="tb-btn primary" id="btn-settings-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-examples" hidden>
+  <div class="modal">
+    <h2>📚 Example Projects</h2>
+    <p class="hint">Load a finished example to see how the blocks fit together.</p>
+    <div id="examples-list"></div>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-code" hidden>
+  <div class="modal modal-wide">
+    <h2>👀 Generated Java</h2>
+    <div id="code-tabs" class="tabs"></div>
+    <pre id="code-view" class="code-view"></pre>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-build" hidden>
+  <div class="modal modal-wide">
+    <h2 id="build-title">▶️ Build Plugin</h2>
+    <div id="build-body">
+      <p>Choose what you'd like to build:</p>
+      <div class="build-choice">
+        <button class="tb-btn success" id="btn-build-jar-real">📦 Download ready-to-use .jar</button>
+        <button class="tb-btn" id="btn-build-source">🗂️ Download Maven source project</button>
+      </div>
+      <div id="build-progress" hidden>
+        <div class="spinner"></div>
+        <span id="build-progress-text">Building your plugin…</span>
+      </div>
+      <pre id="build-log" class="code-view" hidden></pre>
+    </div>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-decompile" hidden>
+  <div class="modal modal-wide">
+    <h2>🧩 Auto-Decompile Plugin</h2>
+    <div id="decompile-body">
+      <div id="decompile-progress">
+        <div class="spinner"></div>
+        <span>Decompiling jar and looking for recognizable blocks…</span>
+      </div>
+      <div id="decompile-result" hidden>
+        <p id="decompile-stats"></p>
+        <div id="decompile-tabs" class="tabs"></div>
+        <pre id="decompile-source" class="code-view"></pre>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="tb-btn" id="btn-decompile-download-zip" hidden>⬇️ Download source .zip</button>
+      <button class="tb-btn primary" id="btn-decompile-load-blocks" hidden>🧱 Load recognized blocks</button>
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<!-- Blockly (loaded from CDN, no build step needed) -->
+<script src="https://cdn.jsdelivr.net/npm/blockly@11/blockly_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11/blocks_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11/msg/en.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11/javascript_compressed.js"></script>
+
+<script src="/js/blocks.js"></script>
+<script src="/js/generator.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="mc_event_join" x="30" y="30">
+    <statement name="DO">
+      <block type="mc_action_set_join_message">
+        <value name="MESSAGE">
+          <block type="text_join">
+            <value name="ADD0">
+              <block type="text">
+                <field name="TEXT">§a Welcome, </field>
+              </block>
+            </value>
+            <value name="ADD1">
+              <block type="mc_value_player_name">
+                <value name="PLAYER">
+                  <block type="mc_value_event_player"></block>
+                </value>
+              </block>
+            </value>
+          </block>
+        </value>
+        <next>
+          <block type="mc_action_give_item">
+            <field name="MATERIAL">APPLE</field>
+            <value name="PLAYER">
+              <block type="mc_value_event_player"></block>
+            </value>
+            <value name="AMOUNT">
+              <block type="math_number">
+                <field name="NUM">1</field>
+              </block>
+            </value>
+          </block>
+        </next>
+      </block>
+    </statement>
+  </block>
+  <block type="mc_event_quit" x="30" y="260">
+    <statement name="DO">
+      <block type="mc_action_set_quit_message">
+        <value name="MESSAGE">
+          <block type="text_join">
+            <value name="ADD0">
+              <block type="mc_value_player_name">
+                <value name="PLAYER">
+                  <block type="mc_value_event_player"></block>
+                </value>
+              </block>
+            </value>
+            <value name="ADD1">
+              <block type="text">
+                <field name="TEXT"> left the game. §7Goodbye!</field>
+              </block>
+            </value>
+          </block>
+        </value>
+      </block>
+    </statement>
+  </block>
+</xml>
