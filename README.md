@@ -8,13 +8,17 @@ Quint also has an **auto-decompilation** feature: drop in *any* existing plugin 
 
 ## Features
 
-- 🧱 **Drag-and-connect visual editor** built on [Blockly](https://developers.google.com/blockly), styled after Scratch, with categories for Events, Commands, Actions, Sensing, Control, Logic, Math, Text and Variables.
-- ⚡ **10 events** (player join/quit/chat/death, block break/place, interact, entity damage, plugin start/stop) and **custom `/commands`**.
-- 🎮 **14 actions** — send/broadcast messages, give items, teleport, set health/hunger, play sounds, spawn particles/mobs, change game mode, kick players, cancel events, and delayed ("wait then...") actions.
+- 🧱 **Drag-and-connect visual editor** built on [Blockly](https://developers.google.com/blockly), styled after Scratch with a deep purple/black dark theme and [Lucide](https://lucide.dev) icons throughout, and categories for Events, Commands, Actions, Sensing, Control, Logic, Math, Text and Variables.
+- ⚡ **18 events** (join/quit/chat/death/respawn, drop item, sneak/sprint toggle, XP level change, mob death, block break/place/ignite, interact, damage, hunger change, plugin start/stop) and **custom `/commands`**.
+- 🎮 **30 actions** — messaging (chat, broadcast, titles, action bar), items & inventory, teleport, health/hunger/XP, potion effects, flight & walk speed, sounds & particles, mob spawning, weather/time/lightning/explosions, game mode, kicking, and both one-shot ("wait then...") and repeating ("every N ticks...") delayed actions.
+- 🔎 **16 sensing blocks** — player health/hunger/XP/position/world, block type, online player count, random numbers, and more.
 - 👀 **View the generated Java** at any time — nothing is hidden, so it also works as a way to *learn* Bukkit/Paper plugin development.
 - 📦 **Real builds, zero install** — click "Build Plugin" to compile a genuine, ready-to-use `.jar` (or download the Maven source project instead) without installing a JDK, Maven, or anything else. See "How the in-browser compiler works" below.
 - 🧩 **Auto-decompilation** — upload any existing plugin `.jar` and Quint decompiles every class with [CFR](https://www.benf.org/other/cfr/) into readable Java, right in your browser, then does a best-effort pass to turn recognizable patterns (message events, cancels, etc.) back into blocks you can drop straight into the editor.
-- 📚 Built-in example projects, save/load to a `.json` file, and autosave to your browser.
+- 📁 **My Projects** — every project you save is kept in your browser (not just one autosave slot), with its own page to browse, reopen or delete past work.
+- ⚙️ **App preferences** — autosave, confirm-before-New, zoom-to-fit, sound effects, a default author name, and a block rendering style, all persisted across projects.
+- 🖥️ **Desktop app** for Windows/Mac/Linux, alongside the website — see below.
+- 📚 Built-in example projects and save/load to a `.json` file.
 
 ## Using it
 

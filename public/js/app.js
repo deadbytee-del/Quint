@@ -2,16 +2,81 @@
   'use strict';
 
   // -----------------------------------------------------------------------
-  // Workspace setup
+  // Preferences (app-level, persisted across all projects)
   // -----------------------------------------------------------------------
-  const workspace = Blockly.inject('blocklyDiv', {
-    toolbox: window.QUINT_TOOLBOX,
-    renderer: 'zelos',
-    trashcan: true,
-    zoom: { controls: true, wheel: true, startScale: 0.95 },
-    grid: { spacing: 25, length: 3, colour: '#e3e7f5', snap: true },
-    move: { scrollbars: true, drag: true, wheel: true },
+  const DEFAULT_PREFS = { autosave: true, confirmNew: true, zoomFit: true, sound: false, author: '', renderer: 'zelos' };
+  let prefs = loadPrefs();
+
+  function loadPrefs() {
+    try {
+      return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('quint-prefs') || '{}') };
+    } catch (e) {
+      return { ...DEFAULT_PREFS };
+    }
+  }
+  function savePrefs() {
+    try { localStorage.setItem('quint-prefs', JSON.stringify(prefs)); } catch (e) { /* ignore */ }
+  }
+
+  function playClick() {
+    if (!prefs.sound) return;
+    try {
+      const ctx = playClick._ctx || (playClick._ctx = new (window.AudioContext || window.webkitAudioContext)());
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 660;
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.13);
+    } catch (e) { /* ignore, audio is a nice-to-have */ }
+  }
+
+  // -----------------------------------------------------------------------
+  // Workspace setup (re-creatable so the "block style" preference can swap
+  // the renderer live).
+  // -----------------------------------------------------------------------
+  const QUINT_BLOCKLY_THEME = Blockly.Theme.defineTheme('quintDark', {
+    base: Blockly.Themes.Classic,
+    componentStyles: {
+      workspaceBackgroundColour: '#0b0712',
+      toolboxBackgroundColour: '#140d24',
+      toolboxForegroundColour: '#ece7f7',
+      flyoutBackgroundColour: '#140d24',
+      flyoutForegroundColour: '#ece7f7',
+      flyoutOpacity: 1,
+      scrollbarColour: '#251a40',
+      scrollbarOpacity: 0.9,
+      insertionMarkerColour: '#8b5cf6',
+      insertionMarkerOpacity: 0.4,
+      cursorColour: '#c4b5fd',
+    },
   });
+
+  let workspace = null;
+  function createWorkspace(rendererName) {
+    const state = workspace ? Blockly.serialization.workspaces.save(workspace) : null;
+    if (workspace) workspace.dispose();
+    workspace = Blockly.inject('blocklyDiv', {
+      toolbox: window.QUINT_TOOLBOX,
+      renderer: rendererName || prefs.renderer || 'zelos',
+      theme: QUINT_BLOCKLY_THEME,
+      trashcan: true,
+      zoom: { controls: true, wheel: true, startScale: 0.95 },
+      grid: { spacing: 25, length: 3, colour: '#251a40', snap: true },
+      move: { scrollbars: true, drag: true, wheel: true },
+    });
+    workspace.addChangeListener((e) => {
+      if (e.isUiEvent) return;
+      clearTimeout(autosave._t);
+      autosave._t = setTimeout(autosave, 800);
+    });
+    if (state) Blockly.serialization.workspaces.load(state, workspace);
+    return workspace;
+  }
+  createWorkspace(prefs.renderer);
 
   // -----------------------------------------------------------------------
   // Project metadata
@@ -25,7 +90,7 @@
       mainClass: 'MyFirstPlugin',
       version: '1.0.0',
       description: 'Made with Quint.',
-      author: '',
+      author: prefs.author || '',
       apiVersion: '1.20',
     };
   }
@@ -61,6 +126,7 @@
     el.hidden = false;
     clearTimeout(toast._t);
     toast._t = setTimeout(() => { el.hidden = true; }, 4200);
+    if (kind === 'success') playClick();
   }
 
   function setStatus(text) {
@@ -111,6 +177,14 @@
     mc_event_block_place: { cls: 'org.bukkit.event.block.BlockPlaceEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();' },
     mc_event_interact: { cls: 'org.bukkit.event.player.PlayerInteractEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
     mc_event_damage: { cls: 'org.bukkit.event.entity.EntityDamageEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;' },
+    mc_event_respawn: { cls: 'org.bukkit.event.player.PlayerRespawnEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
+    mc_event_drop_item: { cls: 'org.bukkit.event.player.PlayerDropItemEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
+    mc_event_toggle_sneak: { cls: 'org.bukkit.event.player.PlayerToggleSneakEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
+    mc_event_toggle_sprint: { cls: 'org.bukkit.event.player.PlayerToggleSprintEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
+    mc_event_level_change: { cls: 'org.bukkit.event.player.PlayerLevelChangeEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer();' },
+    mc_event_entity_death: { cls: 'org.bukkit.event.entity.EntityDeathEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;' },
+    mc_event_block_ignite: { cls: 'org.bukkit.event.block.BlockIgniteEvent', bind: 'org.bukkit.entity.Player player = event.getPlayer(); org.bukkit.block.Block block = event.getBlock();' },
+    mc_event_food_change: { cls: 'org.bukkit.event.entity.FoodLevelChangeEvent', bind: 'org.bukkit.entity.Player player = (event.getEntity() instanceof org.bukkit.entity.Player) ? (org.bukkit.entity.Player) event.getEntity() : null;' },
   };
 
   function generateMainJava() {
@@ -184,11 +258,12 @@ ${eventMethods}}
   // Toolbar: New / Save / Load
   // -----------------------------------------------------------------------
   document.getElementById('btn-new').addEventListener('click', () => {
-    if (!confirm('Start a new plugin? Anything not saved will be lost.')) return;
+    if (prefs.confirmNew && !confirm('Start a new plugin? Anything not saved will be lost.')) return;
     workspace.clear();
     meta = defaultMeta();
     syncTitleFromName();
     setStatus('New project started. Drag an Events block in to begin!');
+    playClick();
   });
 
   document.getElementById('btn-save').addEventListener('click', () => {
@@ -211,33 +286,83 @@ ${eventMethods}}
       if (parsed.meta) meta = { ...defaultMeta(), ...parsed.meta };
       if (parsed.state) Blockly.serialization.workspaces.load(parsed.state, workspace);
       syncTitleFromName();
+      if (prefs.zoomFit) workspace.zoomToFit();
+      saveProjectSnapshot();
       toast('Project loaded!', 'success');
     } catch (err) {
       toast('That file could not be read as a Quint project.', 'error');
     }
   });
 
-  function autosave() {
-    try {
-      const state = Blockly.serialization.workspaces.save(workspace);
-      localStorage.setItem('quint-autosave', JSON.stringify({ meta, state }));
-    } catch (e) { /* best effort only */ }
+  // -----------------------------------------------------------------------
+  // My Projects: every project ever saved in this browser, not just one
+  // autosave slot. Each project gets a stable id; the index tracks
+  // name/last-updated so the "Projects" modal can list, load and delete them.
+  // -----------------------------------------------------------------------
+  function projectsIndexGet() {
+    try { return JSON.parse(localStorage.getItem('quint-projects-index') || '[]'); } catch (e) { return []; }
   }
-  workspace.addChangeListener((e) => {
-    if (e.isUiEvent) return;
-    clearTimeout(autosave._t);
-    autosave._t = setTimeout(autosave, 800);
-  });
-
-  (function restoreAutosave() {
+  function projectsIndexSet(list) {
+    try { localStorage.setItem('quint-projects-index', JSON.stringify(list)); } catch (e) { /* ignore */ }
+  }
+  function ensureProjectId() {
+    if (!meta.id) meta.id = 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return meta.id;
+  }
+  function saveProjectSnapshot() {
+    const id = ensureProjectId();
+    const state = Blockly.serialization.workspaces.save(workspace);
+    try { localStorage.setItem('quint-project-' + id, JSON.stringify({ meta, state })); } catch (e) { return; }
+    const idx = projectsIndexGet();
+    const existing = idx.find((p) => p.id === id);
+    if (existing) { existing.name = meta.name; existing.updatedAt = Date.now(); }
+    else idx.unshift({ id, name: meta.name, updatedAt: Date.now() });
+    projectsIndexSet(idx);
+    try { localStorage.setItem('quint-last-project-id', id); } catch (e) { /* ignore */ }
+  }
+  function loadProjectById(id) {
+    const raw = localStorage.getItem('quint-project-' + id);
+    if (!raw) return false;
     try {
-      const raw = localStorage.getItem('quint-autosave');
-      if (!raw) return;
       const parsed = JSON.parse(raw);
+      workspace.clear();
       if (parsed.meta) meta = { ...defaultMeta(), ...parsed.meta };
       if (parsed.state) Blockly.serialization.workspaces.load(parsed.state, workspace);
       syncTitleFromName();
-    } catch (e) { /* ignore */ }
+      if (prefs.zoomFit) workspace.zoomToFit();
+      try { localStorage.setItem('quint-last-project-id', id); } catch (e) { /* ignore */ }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function deleteProject(id) {
+    localStorage.removeItem('quint-project-' + id);
+    projectsIndexSet(projectsIndexGet().filter((p) => p.id !== id));
+  }
+
+  function autosave() {
+    if (!prefs.autosave) return;
+    try { saveProjectSnapshot(); } catch (e) { /* best effort only */ }
+  }
+
+  (function migrateAndRestore() {
+    try {
+      // One-time migration from the old single-slot autosave format.
+      const legacy = localStorage.getItem('quint-autosave');
+      if (legacy && projectsIndexGet().length === 0) {
+        const parsed = JSON.parse(legacy);
+        const id = 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        const legacyMeta = { ...defaultMeta(), ...(parsed.meta || {}), id };
+        localStorage.setItem('quint-project-' + id, JSON.stringify({ meta: legacyMeta, state: parsed.state }));
+        projectsIndexSet([{ id, name: legacyMeta.name, updatedAt: Date.now() }]);
+        localStorage.setItem('quint-last-project-id', id);
+        localStorage.removeItem('quint-autosave');
+      }
+
+      const lastId = localStorage.getItem('quint-last-project-id');
+      if (lastId) loadProjectById(lastId);
+    } catch (e) { /* ignore, just start fresh */ }
   })();
 
   // -----------------------------------------------------------------------
@@ -267,6 +392,107 @@ ${eventMethods}}
   });
 
   // -----------------------------------------------------------------------
+  // App Settings (preferences) modal
+  // -----------------------------------------------------------------------
+  document.getElementById('btn-app-settings').addEventListener('click', () => {
+    document.getElementById('pref-autosave').checked = prefs.autosave;
+    document.getElementById('pref-confirm-new').checked = prefs.confirmNew;
+    document.getElementById('pref-zoom-fit').checked = prefs.zoomFit;
+    document.getElementById('pref-sound').checked = prefs.sound;
+    document.getElementById('pref-author').value = prefs.author;
+    document.getElementById('pref-renderer').value = prefs.renderer;
+    showModal('modal-app-settings');
+  });
+
+  function wirePrefToggle(id, key, onChange) {
+    document.getElementById(id).addEventListener('change', (e) => {
+      prefs[key] = e.target.checked;
+      savePrefs();
+      if (onChange) onChange();
+    });
+  }
+  wirePrefToggle('pref-autosave', 'autosave');
+  wirePrefToggle('pref-confirm-new', 'confirmNew');
+  wirePrefToggle('pref-zoom-fit', 'zoomFit');
+  wirePrefToggle('pref-sound', 'sound', () => playClick());
+
+  document.getElementById('pref-author').addEventListener('change', (e) => {
+    prefs.author = e.target.value.trim();
+    savePrefs();
+  });
+  document.getElementById('pref-renderer').addEventListener('change', (e) => {
+    prefs.renderer = e.target.value;
+    savePrefs();
+    createWorkspace(prefs.renderer);
+    toast('Block style updated.', 'success');
+  });
+
+  // -----------------------------------------------------------------------
+  // My Projects modal
+  // -----------------------------------------------------------------------
+  function timeAgo(ts) {
+    const seconds = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hr ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+
+  function renderProjectsList() {
+    const listEl = document.getElementById('projects-list');
+    const emptyEl = document.getElementById('projects-empty');
+    const projects = projectsIndexGet().sort((a, b) => b.updatedAt - a.updatedAt);
+    listEl.innerHTML = '';
+    emptyEl.hidden = projects.length > 0;
+    for (const p of projects) {
+      const row = document.createElement('div');
+      row.className = 'project-row';
+      row.innerHTML = `
+        <div class="project-info">
+          <b>${p.name}</b>
+          <span>${timeAgo(p.updatedAt)}</span>
+        </div>
+        <div class="project-actions">
+          <span class="icon-btn" data-action="delete" title="Delete"><i data-lucide="trash-2"></i></span>
+        </div>`;
+      row.querySelector('.project-info').addEventListener('click', () => {
+        if (loadProjectById(p.id)) {
+          hideModal('modal-projects');
+          toast(`Loaded "${p.name}"`, 'success');
+        } else {
+          toast('Could not load that project.', 'error');
+        }
+      });
+      row.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+        deleteProject(p.id);
+        renderProjectsList();
+        toast('Project deleted.', 'success');
+      });
+      listEl.appendChild(row);
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  document.getElementById('btn-projects').addEventListener('click', () => {
+    renderProjectsList();
+    showModal('modal-projects');
+  });
+
+  // -----------------------------------------------------------------------
+  // Windows/Mac/Linux desktop app download button (hidden if we're already
+  // running inside the desktop app itself).
+  // -----------------------------------------------------------------------
+  if (window.quintDesktop) {
+    const exeBtn = document.getElementById('btn-download-exe');
+    if (exeBtn) exeBtn.style.display = 'none';
+  }
+
+  // -----------------------------------------------------------------------
   // Examples modal
   // -----------------------------------------------------------------------
   document.getElementById('btn-examples').addEventListener('click', async () => {
@@ -284,10 +510,12 @@ ${eventMethods}}
         card.addEventListener('click', async () => {
           const xml = await fetch(`examples/${ex.file}`).then((r) => r.text());
           if (ex.meta) meta = { ...defaultMeta(), ...ex.meta };
+          delete meta.id;
           const dom = Blockly.utils.xml.textToDom(xml);
           workspace.clear();
           Blockly.Xml.domToWorkspace(dom, workspace);
           syncTitleFromName();
+          if (prefs.zoomFit) workspace.zoomToFit();
           hideModal('modal-examples');
           toast(`Loaded example: ${ex.title}`, 'success');
         });
@@ -484,6 +712,8 @@ ${eventMethods}}
     hideModal('modal-decompile');
     toast('Recognized blocks were added to your workspace.', 'success');
   });
+
+  if (window.lucide) lucide.createIcons();
 
   setStatus('Ready. Drag a block from the Events category to get started!');
 })();

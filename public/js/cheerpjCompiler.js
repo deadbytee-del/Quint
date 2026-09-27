@@ -16,7 +16,14 @@
   const CHEERPJ_LOADER_URL = 'https://cjrtnc.leaningtech.com/4.3/loader.js';
   const ECJ_CLASSPATH = '/app/vendor/ecj.jar';
   const CFR_CLASSPATH = '/app/vendor/cfr.jar';
-  const PLUGIN_COMPILE_CLASSPATH = '/app/vendor/paper-api.jar:/app/vendor/adventure-api.jar:/app/vendor/bungeecord-chat.jar';
+  const PLUGIN_COMPILE_CLASSPATH = [
+    '/app/vendor/paper-api.jar',
+    '/app/vendor/adventure-api.jar',
+    '/app/vendor/adventure-key.jar',
+    '/app/vendor/examination-api.jar',
+    '/app/vendor/examination-string.jar',
+    '/app/vendor/bungeecord-chat.jar',
+  ].join(':');
 
   let initPromise = null;
 

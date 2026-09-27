@@ -156,6 +156,102 @@
     return `getServer().getScheduler().runTaskLater(this, () -> {\n${body}}, ${toInt(ticks)});\n`;
   };
 
+  F['mc_action_repeat_every_ticks'] = (block, g) => {
+    const period = num(g, block, 'PERIOD', 20);
+    const body = g.statementToCode(block, 'DO');
+    return `getServer().getScheduler().runTaskTimer(this, () -> {\n${body}}, ${toInt(period)}, ${toInt(period)});\n`;
+  };
+
+  F['mc_action_set_time'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const ticks = num(g, block, 'TICKS', 0);
+    return `${player}.getWorld().setTime(${toInt(ticks)});\n`;
+  };
+
+  F['mc_action_set_weather'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const storm = block.getFieldValue('WEATHER') === 'STORM';
+    return `${player}.getWorld().setStorm(${storm});\n`;
+  };
+
+  F['mc_action_strike_lightning'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return `${player}.getWorld().strikeLightning(${player}.getLocation());\n`;
+  };
+
+  F['mc_action_create_explosion'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const power = num(g, block, 'POWER', 4);
+    return `${player}.getWorld().createExplosion(${player}.getLocation(), (float) (${power}));\n`;
+  };
+
+  F['mc_action_add_potion_effect'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const effect = block.getFieldValue('EFFECT');
+    const seconds = num(g, block, 'SECONDS', 10);
+    const level = num(g, block, 'LEVEL', 1);
+    return `${player}.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.${effect}, ${toInt(seconds)} * 20, ${toInt(level)} - 1));\n`;
+  };
+
+  F['mc_action_clear_potion_effects'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return `for (org.bukkit.potion.PotionEffect quintEffect : ${player}.getActivePotionEffects()) { ${player}.removePotionEffect(quintEffect.getType()); }\n`;
+  };
+
+  F['mc_action_set_flying'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const on = block.getFieldValue('STATE') === 'ON';
+    return `${player}.setAllowFlight(${on}); ${player}.setFlying(${on});\n`;
+  };
+
+  F['mc_action_set_walk_speed'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const speed = num(g, block, 'SPEED', 0.2);
+    return `${player}.setWalkSpeed(Math.max(-1f, Math.min(1f, (float) (${speed}))));\n`;
+  };
+
+  F['mc_action_clear_inventory'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return `${player}.getInventory().clear();\n`;
+  };
+
+  F['mc_action_give_xp'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const amount = num(g, block, 'AMOUNT', 10);
+    return `${player}.giveExp(${toInt(amount)});\n`;
+  };
+
+  F['mc_action_set_level'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const level = num(g, block, 'LEVEL', 0);
+    return `${player}.setLevel(${toInt(level)});\n`;
+  };
+
+  F['mc_action_equip_item'] = (block, g) => {
+    const material = block.getFieldValue('MATERIAL');
+    const player = val(g, block, 'PLAYER', 'player');
+    return `${player}.getInventory().setItemInMainHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.${material}, 1));\n`;
+  };
+
+  F['mc_action_set_block_at_player'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const material = block.getFieldValue('MATERIAL2');
+    return `${player}.getLocation().getBlock().setType(org.bukkit.Material.${material});\n`;
+  };
+
+  F['mc_action_send_title'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const title = val(g, block, 'TITLE', '""');
+    const subtitle = val(g, block, 'SUBTITLE', '""');
+    return `${player}.sendTitle(${title}, ${subtitle}, 10, 70, 20);\n`;
+  };
+
+  F['mc_action_send_actionbar'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    const text = val(g, block, 'TEXT', '""');
+    return `${player}.sendActionBar(net.kyori.adventure.text.Component.text(String.valueOf(${text})));\n`;
+  };
+
   // ---------------------------------------------------------------------
   // Sensing / reporters
   // ---------------------------------------------------------------------
@@ -174,6 +270,50 @@
     const idx = Math.max(1, parseInt(block.getFieldValue('INDEX'), 10) || 1) - 1;
     return [`(args.length > ${idx} ? args[${idx}] : "")`, Order.ATOMIC];
   };
+
+  F['mc_value_player_health'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return [`${player}.getHealth()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_food'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return [`${player}.getFoodLevel()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_level'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return [`${player}.getLevel()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_world_name'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return [`${player}.getWorld().getName()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_x'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return [`${player}.getLocation().getX()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_y'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return [`${player}.getLocation().getY()`, Order.ATOMIC];
+  };
+
+  F['mc_value_player_z'] = (block, g) => {
+    const player = val(g, block, 'PLAYER', 'player');
+    return [`${player}.getLocation().getZ()`, Order.ATOMIC];
+  };
+
+  F['mc_value_online_count'] = () => ['getServer().getOnlinePlayers().size()', Order.ATOMIC];
+
+  F['mc_value_random_number'] = (block, g) => {
+    const max = num(g, block, 'MAX', 10);
+    return [`((int) (Math.random() * ((${max}) + 1)))`, Order.ATOMIC];
+  };
+
+  F['mc_value_block_type'] = () => ['block.getType().name()', Order.ATOMIC];
 
   // ---------------------------------------------------------------------
   // Control
