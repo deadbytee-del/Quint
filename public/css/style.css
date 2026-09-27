@@ -74,7 +74,28 @@ html, body {
 .tb-btn.success { background: var(--success); border-color: var(--success-dark); }
 .tb-btn.success:hover { background: #6ccf6c; }
 
+#static-mode-banner {
+  position: fixed;
+  top: 56px; left: 0; right: 0;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  background: #fff3cd;
+  color: #6b5300;
+  font-size: 12.5px;
+  text-align: center;
+  border-bottom: 1px solid #f0dca0;
+  z-index: 10;
+}
+#static-mode-banner[hidden] { display: none; }
+#static-mode-banner a { color: #6b5300; }
+#static-mode-banner code { background: rgba(0,0,0,0.08); padding: 1px 5px; border-radius: 4px; }
+
 #app { position: absolute; top: 56px; bottom: 26px; left: 0; right: 0; }
+body.static-mode #app { top: 90px; }
 #blockly-area { position: absolute; inset: 0; }
 #blocklyDiv { position: absolute; inset: 0; }
 
