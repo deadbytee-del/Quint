@@ -112,7 +112,27 @@
       description: 'Made with Quint.',
       author: prefs.author || '',
       mcVersion: DEFAULT_MC_VERSION,
+      depend: [],
+      softdepend: [],
     };
+  }
+
+  // LuckPerms is an optional, soft dependency: auto-list it in plugin.yml
+  // whenever the workspace actually uses a LuckPerms block, on top of
+  // whatever the user typed into Plugin Settings, so people don't have to
+  // remember to declare it by hand.
+  function effectiveSoftDepend() {
+    const list = new Set(meta.softdepend || []);
+    const usesLuckPerms = workspace.getAllBlocks(false).some((b) => b.type.indexOf('luckperms') !== -1);
+    if (usesLuckPerms) list.add('LuckPerms');
+    return [...list];
+  }
+
+  function parseDependList(text) {
+    return String(text || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 
   function syncTitleFromName() {
@@ -238,7 +258,42 @@
     Java.hasQuitMsg = !!ctx.hasQuitMsg;
   }
 
+  // Pre-build validation: catches the two mistakes that would otherwise
+  // only surface as a confusing Java compile error (or silently produce a
+  // plugin that does less than the workspace looks like it does) --
+  // a block sitting disconnected from any event/command, and a value
+  // socket nobody ever filled in.
+  function blockLabel(b) {
+    return (b.type || 'block').replace(/^mc_/, '').replace(/[_-]+/g, ' ').trim();
+  }
+
+  function validateWorkspace() {
+    const problems = [];
+    const topLevelOk = new Set(['mc_on_enable', 'mc_on_disable', 'mc_command_define', ...Object.keys(EVENT_INFO)]);
+    workspace.getTopBlocks(true).forEach((b) => {
+      if (!topLevelOk.has(b.type)) {
+        problems.push({ id: b.id, text: `A "${blockLabel(b)}" block isn't connected to any event or command, so it will never run.` });
+      }
+    });
+    workspace.getAllBlocks(false).forEach((b) => {
+      if (!b.isEnabled()) return;
+      (b.inputList || []).forEach((input) => {
+        if (input.connection && input.connection.type === Blockly.INPUT_VALUE && !input.connection.targetConnection) {
+          problems.push({ id: b.id, text: `A "${blockLabel(b)}" block is missing a value -- one of its sockets is still empty.` });
+        }
+      });
+    });
+    return problems;
+  }
+
   function generateMainJava() {
+    const problems = validateWorkspace();
+    if (problems.length) {
+      const err = new Error(`Fix ${problems.length} problem${problems.length === 1 ? '' : 's'} before building:\n` + problems.map((p) => `  • ${p.text}`).join('\n'));
+      err.problems = problems;
+      throw err;
+    }
+
     const Java = window.QuintJava;
     Java.init(workspace);
 
@@ -248,8 +303,12 @@
     const eventBlocks = top.filter((b) => EVENT_INFO[b.type]);
     const commandBlocks = top.filter((b) => b.type === 'mc_command_define');
 
+    // Every variable is a single Object-typed field, so one variable can
+    // hold a number, a string, a boolean, a list, a player -- whatever was
+    // last assigned to it -- instead of needing a separate "make a number
+    // variable"/"make a list variable" block for each kind of value.
     const varFields = workspace.getAllVariables()
-      .map((v) => `    double ${Java.getVariableName(v.getId())} = 0;`)
+      .map((v) => `    Object ${Java.getVariableName(v.getId())} = Double.valueOf(0);`)
       .join('\n');
 
     setGenScope(Java, NO_CONTEXT);
@@ -429,6 +488,8 @@ ${eventMethods}}
     document.getElementById('set-description').value = meta.description;
     document.getElementById('set-author').value = meta.author;
     document.getElementById('set-mcversion').value = resolveMcVersion();
+    document.getElementById('set-depend').value = (meta.depend || []).join(', ');
+    document.getElementById('set-softdepend').value = (meta.softdepend || []).join(', ');
     showModal('modal-settings');
   });
   document.getElementById('btn-settings-save').addEventListener('click', () => {
@@ -439,6 +500,8 @@ ${eventMethods}}
     meta.description = document.getElementById('set-description').value.trim();
     meta.author = document.getElementById('set-author').value.trim();
     meta.mcVersion = document.getElementById('set-mcversion').value;
+    meta.depend = parseDependList(document.getElementById('set-depend').value);
+    meta.softdepend = parseDependList(document.getElementById('set-softdepend').value);
     syncTitleFromName();
     hideModal('modal-settings');
     autosave();
@@ -611,7 +674,7 @@ ${eventMethods}}
     const packageName = T.sanitizePackage(meta.packageName);
     const mainClass = T.sanitizeIdentifier(meta.mainClass, 'QuintMain');
     const mcv = MC_VERSIONS[resolveMcVersion()];
-    const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion };
+    const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion, softdepend: effectiveSoftDepend() };
     const packagePath = packageName.split('.').join('/');
 
     const zip = new JSZip();
@@ -661,7 +724,7 @@ ${eventMethods}}
       const packageName = T.sanitizePackage(meta.packageName);
       const mainClass = T.sanitizeIdentifier(meta.mainClass, 'QuintMain');
       const mcv = MC_VERSIONS[resolveMcVersion()];
-      const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion };
+      const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion, softdepend: effectiveSoftDepend() };
       const pluginYml = T.buildPluginYml(normalizedProject, commands);
 
       const blob = await window.QuintCompiler.compilePluginJar(

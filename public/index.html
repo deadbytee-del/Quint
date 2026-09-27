@@ -63,6 +63,13 @@
       </select>
       <span class="hint">Which Paper API your plugin is compiled and packaged against.</span>
     </label>
+    <label>Depends on these plugins (comma-separated, must be installed)
+      <input id="set-depend" type="text" placeholder="Vault, WorldGuard" />
+    </label>
+    <label>Optionally uses these plugins (comma-separated, works fine without them)
+      <input id="set-softdepend" type="text" placeholder="LuckPerms" />
+      <span class="hint">LuckPerms is added here automatically if your workspace uses any LuckPerms block.</span>
+    </label>
     <div class="modal-actions">
       <button class="tb-btn" data-close>Cancel</button>
       <button class="tb-btn primary" id="btn-settings-save"><i data-lucide="check"></i> Save</button>

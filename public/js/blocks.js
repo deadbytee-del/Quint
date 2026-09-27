@@ -9,6 +9,7 @@
   const ACTION_COLOR = '#4C97FF';
   const SENSING_COLOR = '#5CB1D6';
   const CONTROL_COLOR = '#FF8C1A';
+  const UNSAFE_COLOR = '#B33A3A';
 
   // Every block renders its inputs inline on one row by default (e.g. "send
   // [player] the message [text]") instead of Blockly's default of stacking
@@ -156,6 +157,24 @@
     nextStatement: null,
     colour: ACTION_COLOR,
     tooltip: 'Sends a message to every player currently online.',
+  });
+
+  define('mc_action_send_minimessage', {
+    message0: '✨ send %1 a styled message %2',
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'MESSAGE' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Like "send message", but the text can use MiniMessage tags for color/formatting, e.g. "<gradient:#ff0000:#8000ff><bold>Welcome!</bold></gradient>" or "<red>You died.</red>". See https://docs.advntr.dev/minimessage/format.html for all tags.',
+  });
+
+  define('mc_action_broadcast_minimessage', {
+    message0: '✨📢 broadcast a styled message to everyone: %1',
+    args0: [{ type: 'input_value', name: 'MESSAGE' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Like "broadcast", but the text can use MiniMessage tags for color/formatting.',
   });
 
   define('mc_action_give_item', {
@@ -488,6 +507,50 @@
     tooltip: 'Grants a permission node (e.g. "essentials.fly") to a player for as long as they stay online.',
   });
 
+  define('mc_action_luckperms_add_permission', {
+    message0: '🛡 (LuckPerms) permanently give %1 the permission %2',
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'PERMISSION' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Unlike "give the permission" (which only lasts until they log off), this saves the permission node into LuckPerms so it persists forever. Requires the LuckPerms plugin to be installed on the server -- does nothing (safely) if it isn\'t.',
+  });
+
+  define('mc_action_luckperms_add_to_group', {
+    message0: '🛡 (LuckPerms) add %1 to the group %2',
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'GROUP' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Adds a player to a LuckPerms permission group (e.g. "vip"). Requires the LuckPerms plugin -- does nothing (safely) if it isn\'t installed.',
+  });
+
+  define('mc_action_set_persistent_data', {
+    message0: '💾 save %1 for %2 as %3 = %4',
+    args0: [
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
+      { type: 'input_dummy' },
+      { type: 'field_input', name: 'KEY', text: 'myData' },
+      { type: 'input_value', name: 'VALUE' },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: ACTION_COLOR,
+    tooltip: 'Stores a piece of text on this player that survives server restarts and reloads (using Bukkit\'s PersistentDataContainer) -- unlike a normal variable, this isn\'t lost when the plugin stops.',
+  });
+
+  define('mc_value_persistent_data', {
+    message0: 'the saved %1 for %2 (or %3 if none)',
+    args0: [
+      { type: 'field_input', name: 'KEY', text: 'myData' },
+      { type: 'input_value', name: 'PLAYER', check: 'Player' },
+      { type: 'input_value', name: 'DEFAULT' },
+    ],
+    output: 'String',
+    colour: SENSING_COLOR,
+    tooltip: 'Reads back a value saved earlier with "save ... as ...". Always a piece of text.',
+  });
+
   // ---------------------------------------------------------------------
   // Sensing / value reporters.
   // ---------------------------------------------------------------------
@@ -636,6 +699,14 @@
     tooltip: 'True if the player has this permission node (e.g. "essentials.fly").',
   });
 
+  define('mc_value_luckperms_in_group', {
+    message0: '(LuckPerms) is %1 in the group %2 ?',
+    args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }, { type: 'input_value', name: 'GROUP' }],
+    output: 'Boolean',
+    colour: SENSING_COLOR,
+    tooltip: 'True if the player belongs to this LuckPerms group. Requires the LuckPerms plugin -- always false (safely) if it isn\'t installed.',
+  });
+
   define('mc_value_is_sneaking', {
     message0: 'is %1 sneaking?',
     args0: [{ type: 'input_value', name: 'PLAYER', check: 'Player' }],
@@ -680,6 +751,47 @@
     tooltip: 'Looks up a player by exact username. Use this to target someone other than the event\'s own player -- e.g. plug it into any block\'s player socket. Empty/nothing if that player isn\'t online.',
   });
 
+  define('mc_logic_xor', {
+    message0: '%1 xor %2',
+    args0: [{ type: 'input_value', name: 'A', check: 'Boolean' }, { type: 'input_value', name: 'B', check: 'Boolean' }],
+    output: 'Boolean',
+    colour: '#5C81A6',
+    tooltip: 'True when exactly one of the two is true (not both, not neither) -- Blockly\'s built-in "and"/"or" block doesn\'t offer this.',
+  });
+
+  // ---------------------------------------------------------------------
+  // Unsafe / Advanced -- an escape hatch out of the type-checked block
+  // system for whatever it can't express yet. These blocks are NOT safe by
+  // construction: they paste text straight into the generated Java, so a
+  // mistake here is a normal Java compile error (or a runtime bug), not a
+  // friendly block-shaped one. Kept in their own red category so nobody
+  // stumbles into them by accident.
+  // ---------------------------------------------------------------------
+  define('mc_unsafe_raw_statement', {
+    message0: '⚠️ run raw Java statement: %1',
+    args0: [{ type: 'field_input', name: 'CODE', text: 'System.out.println("hello");' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: UNSAFE_COLOR,
+    tooltip: 'UNSAFE: pastes this exact line of Java into the generated code, no type checking at all. You can reference "player", "message", "block", "sender" or "args" if the surrounding event/command provides them. A typo here is a Java compile error, not a block warning.',
+  });
+
+  define('mc_unsafe_raw_expression', {
+    message0: '⚠️ raw Java expression: %1',
+    args0: [{ type: 'field_input', name: 'CODE', text: 'player.getName()' }],
+    output: null,
+    colour: UNSAFE_COLOR,
+    tooltip: 'UNSAFE: this text is pasted directly into the generated Java wherever you plug it in, exactly as-is. Fits into ANY socket because it isn\'t type-checked at all -- it\'s on you to make sure the expression actually produces the right type for wherever you put it.',
+  });
+
+  define('mc_unsafe_import_class', {
+    message0: '⚠️ use the fully-qualified Java class %1',
+    args0: [{ type: 'field_input', name: 'CLASSNAME', text: 'java.util.UUID' }],
+    output: null,
+    colour: UNSAFE_COLOR,
+    tooltip: 'UNSAFE: expands to the class name itself, so you can call static methods on any Java/Bukkit/Paper class Quint doesn\'t have a dedicated block for yet, e.g. combine with a raw expression: "java.util.UUID.randomUUID()".',
+  });
+
   // ---------------------------------------------------------------------
   // Toolbox
   // ---------------------------------------------------------------------
@@ -706,14 +818,16 @@
       ]),
       cat('Commands', COMMAND_COLOR, ['mc_command_define']),
       cat('Actions', ACTION_COLOR, [
-        'mc_action_send_message', 'mc_action_broadcast', 'mc_action_send_title', 'mc_action_send_actionbar',
+        'mc_action_send_message', 'mc_action_broadcast', 'mc_action_send_minimessage', 'mc_action_broadcast_minimessage',
+        'mc_action_send_title', 'mc_action_send_actionbar',
         'mc_action_give_item', 'mc_action_equip_item', 'mc_action_remove_item', 'mc_action_clear_inventory', 'mc_action_teleport', 'mc_action_teleport_to_location',
         'mc_action_set_health', 'mc_action_set_food', 'mc_action_give_xp', 'mc_action_set_level',
         'mc_action_add_potion_effect', 'mc_action_clear_potion_effects', 'mc_action_set_flying', 'mc_action_set_walk_speed',
         'mc_action_play_sound', 'mc_action_spawn_particle', 'mc_action_spawn_mob', 'mc_action_strike_lightning',
         'mc_action_create_explosion', 'mc_action_set_block_at_player', 'mc_action_set_time', 'mc_action_set_weather',
         'mc_action_set_gamemode', 'mc_action_kick_player', 'mc_action_set_spawn_point',
-        'mc_action_grant_permission', 'mc_action_run_console_command',
+        'mc_action_grant_permission', 'mc_action_luckperms_add_permission', 'mc_action_luckperms_add_to_group',
+        'mc_action_set_persistent_data', 'mc_action_run_console_command',
         'mc_action_set_join_message', 'mc_action_set_quit_message', 'mc_action_cancel_event',
       ]),
       cat('Sensing', SENSING_COLOR, [
@@ -721,16 +835,18 @@
         'mc_value_player_name', 'mc_value_player_health', 'mc_value_player_max_health', 'mc_value_player_food', 'mc_value_player_level',
         'mc_value_player_world_name', 'mc_value_player_x', 'mc_value_player_y', 'mc_value_player_z', 'mc_value_player_location',
         'mc_value_block_type', 'mc_value_online_count', 'mc_value_random_number', 'mc_value_player_by_name',
-        'mc_value_has_permission', 'mc_value_is_sneaking', 'mc_value_is_op', 'mc_value_has_item',
+        'mc_value_has_permission', 'mc_value_luckperms_in_group', 'mc_value_persistent_data',
+        'mc_value_is_sneaking', 'mc_value_is_op', 'mc_value_has_item',
         'mc_value_command_sender', 'mc_value_command_arg', 'mc_value_command_args_joined',
       ]),
       cat('Control', CONTROL_COLOR, [
-        'controls_if', 'controls_repeat_ext', 'controls_whileUntil',
+        'controls_if', 'controls_repeat_ext', 'controls_whileUntil', 'controls_forEach',
         'mc_action_wait_then', 'mc_action_repeat_every_ticks',
       ]),
       { kind: 'category', name: 'Logic', colour: '#5C81A6', contents: [
         { kind: 'block', type: 'logic_compare' },
         { kind: 'block', type: 'logic_operation' },
+        { kind: 'block', type: 'mc_logic_xor' },
         { kind: 'block', type: 'logic_negate' },
         { kind: 'block', type: 'logic_boolean' },
       ] },
@@ -742,7 +858,17 @@
         { kind: 'block', type: 'text' },
         { kind: 'block', type: 'text_join' },
       ] },
+      { kind: 'category', name: 'Lists', colour: '#745CA6', contents: [
+        { kind: 'block', type: 'lists_create_with' },
+        { kind: 'block', type: 'lists_length' },
+        { kind: 'block', type: 'lists_isEmpty' },
+        { kind: 'block', type: 'lists_getIndex' },
+        { kind: 'block', type: 'lists_setIndex' },
+      ] },
       { kind: 'category', name: 'Variables', colour: '#A65C81', custom: 'VARIABLE' },
+      cat('⚠️ Unsafe / Advanced', UNSAFE_COLOR, [
+        'mc_unsafe_raw_statement', 'mc_unsafe_raw_expression', 'mc_unsafe_import_class',
+      ]),
     ],
   };
 })();

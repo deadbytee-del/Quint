@@ -48,9 +48,25 @@
     return JSON.stringify(String(str == null ? '' : str));
   }
 
+  // Variables are stored as plain `Object` fields (so one variable can hold
+  // a number, a string, a boolean, a list, ... whatever gets assigned to it
+  // last -- there's no separate "make a String/Number/List variable" step).
+  // That means anything read back out of a variable is statically an
+  // Object, even where a block needs a primitive double/boolean to do
+  // arithmetic or comparisons. These two helpers do that unboxing at the
+  // point of use; wrapping is always safe even when the expression already
+  // *is* a primitive (autoboxes then immediately unboxes, compiler-cheap).
+  function asDouble(code) {
+    return `(((Number) (Object) (${code})).doubleValue())`;
+  }
+
+  function asBoolean(code) {
+    return `(((Boolean) (Object) (${code})).booleanValue())`;
+  }
+
   function num(generator, block, name, fallback) {
-    const code = generator.valueToCode(block, name, Order.ATOMIC);
-    return code || String(fallback);
+    const code = generator.valueToCode(block, name, Order.NONE);
+    return code ? asDouble(code) : String(fallback);
   }
 
   function val(generator, block, name, fallback) {
@@ -459,7 +475,8 @@
     let n = 0;
     let code = '';
     do {
-      const cond = g.valueToCode(block, 'IF' + n, Order.NONE) || 'false';
+      const rawCond = g.valueToCode(block, 'IF' + n, Order.NONE);
+      const cond = rawCond ? asBoolean(rawCond) : 'false';
       const branch = g.statementToCode(block, 'DO' + n);
       code += (n === 0 ? 'if' : 'else if') + ` (${cond}) {\n${branch}}\n`;
       n++;
@@ -479,16 +496,22 @@
 
   F['controls_whileUntil'] = (block, g) => {
     const until = block.getFieldValue('MODE') === 'UNTIL';
-    let cond = g.valueToCode(block, 'BOOL', until ? Order.UNARY : Order.NONE) || 'false';
+    const rawCond = g.valueToCode(block, 'BOOL', Order.NONE);
+    let cond = rawCond ? asBoolean(rawCond) : 'false';
     if (until) cond = `!(${cond})`;
     const branch = g.statementToCode(block, 'DO');
-    // Route the condition through a method call rather than emitting it
-    // raw: a literal/constant "true"/"false" condition (e.g. "repeat until
-    // [true]") makes the loop body a compile-time-constant-false
-    // condition, which javac/ECJ reject as an "unreachable statement".
-    // Boolean.valueOf(...).booleanValue() is never a JLS constant
-    // expression, so this sidesteps that check without changing behavior.
-    return `while (Boolean.valueOf(${cond}).booleanValue()) {\n${branch}}\n`;
+    // asBoolean's cast-to-Boolean is never a JLS compile-time constant
+    // expression, so a literal "repeat until [true]" condition can't be
+    // constant-folded into a compile-time-false loop, which javac/ECJ
+    // would otherwise reject as an "unreachable statement".
+    return `while (${cond}) {\n${branch}}\n`;
+  };
+
+  F['controls_forEach'] = (block, g) => {
+    const listCode = g.valueToCode(block, 'LIST', Order.NONE) || 'new java.util.ArrayList<Object>()';
+    const varName = g.getVariableName(block.getFieldValue('VAR'));
+    const branch = g.statementToCode(block, 'DO');
+    return `for (Object ${varName} : ((java.util.List<Object>) (${listCode}))) {\n${branch}}\n`;
   };
 
   // ---------------------------------------------------------------------
@@ -496,24 +519,48 @@
   // ---------------------------------------------------------------------
   const COMPARE_OPS = { EQ: '==', NEQ: '!=', LT: '<', LTE: '<=', GT: '>', GTE: '>=' };
   F['logic_compare'] = (block, g) => {
-    const op = COMPARE_OPS[block.getFieldValue('OP')];
-    const order = op === '==' || op === '!=' ? Order.EQUALITY : Order.RELATIONAL;
-    const a = g.valueToCode(block, 'A', order) || '0';
-    const b = g.valueToCode(block, 'B', order) || '0';
-    return [`(${a} ${op} ${b})`, order];
+    const op = block.getFieldValue('OP');
+    const a = g.valueToCode(block, 'A', Order.NONE);
+    const b = g.valueToCode(block, 'B', Order.NONE);
+    if (op === 'EQ' || op === 'NEQ') {
+      // Variables/reporters are plain Objects here, so "==" would compare
+      // references, not values (e.g. two equal-looking Strings would be
+      // "unequal"). Objects.equals does the right thing for every type,
+      // including two nulls -- except two numbers that happen to be boxed
+      // differently (Integer 10 vs Double 10.0), which .equals() treats as
+      // unequal even though they're clearly "the same number" to a user;
+      // compare those by numeric value instead.
+      const ax = a || 'null';
+      const bx = b || 'null';
+      const eq = `((((Object) (${ax})) instanceof Number && ((Object) (${bx})) instanceof Number) ? Double.compare(${asDouble(ax)}, ${asDouble(bx)}) == 0 : java.util.Objects.equals(${ax}, ${bx}))`;
+      return [op === 'EQ' ? eq : `(!${eq})`, Order.UNARY];
+    }
+    const expr = `(${asDouble(a || '0')} ${COMPARE_OPS[op]} ${asDouble(b || '0')})`;
+    return [expr, Order.RELATIONAL];
   };
 
   F['logic_operation'] = (block, g) => {
     const isAnd = block.getFieldValue('OP') === 'AND';
+    const rawA = g.valueToCode(block, 'A', Order.NONE);
+    const rawB = g.valueToCode(block, 'B', Order.NONE);
+    const a = rawA ? asBoolean(rawA) : 'false';
+    const b = rawB ? asBoolean(rawB) : 'false';
     const order = isAnd ? Order.LOGICAL_AND : Order.LOGICAL_OR;
-    const a = g.valueToCode(block, 'A', order) || 'false';
-    const b = g.valueToCode(block, 'B', order) || 'false';
     return [`(${a} ${isAnd ? '&&' : '||'} ${b})`, order];
   };
 
   F['logic_negate'] = (block, g) => {
-    const bool = g.valueToCode(block, 'BOOL', Order.UNARY) || 'false';
+    const raw = g.valueToCode(block, 'BOOL', Order.NONE);
+    const bool = raw ? asBoolean(raw) : 'false';
     return [`(!${bool})`, Order.UNARY];
+  };
+
+  F['mc_logic_xor'] = (block, g) => {
+    const rawA = g.valueToCode(block, 'A', Order.NONE);
+    const rawB = g.valueToCode(block, 'B', Order.NONE);
+    const a = rawA ? asBoolean(rawA) : 'false';
+    const b = rawB ? asBoolean(rawB) : 'false';
+    return [`(${a} ^ ${b})`, Order.EQUALITY];
   };
 
   F['logic_boolean'] = (block) => [block.getFieldValue('BOOL') === 'TRUE' ? 'true' : 'false', Order.ATOMIC];
@@ -530,8 +577,8 @@
   F['math_arithmetic'] = (block, g) => {
     const opField = block.getFieldValue('OP');
     const order = opField === 'ADD' || opField === 'MINUS' ? Order.ADDITIVE : Order.MULTIPLICATIVE;
-    const a = g.valueToCode(block, 'A', order) || '0';
-    const b = g.valueToCode(block, 'B', order) || '0';
+    const a = asDouble(g.valueToCode(block, 'A', Order.NONE) || '0');
+    const b = asDouble(g.valueToCode(block, 'B', Order.NONE) || '0');
     if (opField === 'POWER') return [`Math.pow(${a}, ${b})`, Order.ATOMIC];
     return [`(${a} ${ARITH_OPS[opField]} ${b})`, order];
   };
@@ -552,6 +599,65 @@
   };
 
   // ---------------------------------------------------------------------
+  // Lists -- generated as a plain java.util.List<Object>, so a list can mix
+  // numbers/strings/players/whatever, same as a variable can.
+  // ---------------------------------------------------------------------
+  function asList(code) {
+    return `((java.util.List<Object>) (${code || 'new java.util.ArrayList<Object>()'}))`;
+  }
+
+  // FIRST/LAST/RANDOM/FROM_END/FROM_START -> a zero-based java.util.List index.
+  function listIndexExpr(g, block, listVar) {
+    const where = block.getFieldValue('WHERE') || 'FROM_START';
+    if (where === 'FIRST') return '0';
+    if (where === 'LAST') return `(${listVar}.size() - 1)`;
+    if (where === 'RANDOM') return `new java.util.Random().nextInt(${listVar}.size())`;
+    const at = num(g, block, 'AT', 1);
+    if (where === 'FROM_END') return `(${listVar}.size() - ${toInt(at)})`;
+    return `(${toInt(at)} - 1)`; // FROM_START
+  }
+
+  F['lists_create_with'] = (block, g) => {
+    const count = block.itemCount_ || 0;
+    const items = [];
+    for (let i = 0; i < count; i++) {
+      items.push(g.valueToCode(block, 'ADD' + i, Order.NONE) || 'null');
+    }
+    return [`new java.util.ArrayList<Object>(java.util.Arrays.asList(${items.join(', ')}))`, Order.ATOMIC];
+  };
+
+  F['lists_length'] = (block, g) => {
+    const code = g.valueToCode(block, 'VALUE', Order.NONE) || '""';
+    return [`(((Object) (${code})) instanceof java.util.List ? ((java.util.List) (${code})).size() : String.valueOf(${code}).length())`, Order.ATOMIC];
+  };
+
+  F['lists_isEmpty'] = (block, g) => {
+    const code = g.valueToCode(block, 'VALUE', Order.NONE) || '""';
+    return [`(((Object) (${code})) instanceof java.util.List ? ((java.util.List) (${code})).isEmpty() : String.valueOf(${code}).isEmpty())`, Order.ATOMIC];
+  };
+
+  F['lists_getIndex'] = (block, g) => {
+    const listVar = asList(g.valueToCode(block, 'VALUE', Order.NONE));
+    const idx = listIndexExpr(g, block, listVar);
+    const mode = block.getFieldValue('MODE') || 'GET';
+    if (mode === 'REMOVE') return `${listVar}.remove(${idx});\n`;
+    const method = mode === 'GET_REMOVE' ? 'remove' : 'get';
+    return [`${listVar}.${method}(${idx})`, Order.ATOMIC];
+  };
+
+  F['lists_setIndex'] = (block, g) => {
+    const listVar = asList(g.valueToCode(block, 'LIST', Order.NONE));
+    const idx = listIndexExpr(g, block, listVar);
+    const mode = block.getFieldValue('MODE') || 'SET';
+    const to = val(g, block, 'TO', 'null');
+    if (mode === 'INSERT') {
+      if (block.getFieldValue('WHERE') === 'LAST') return `${listVar}.add(${to});\n`;
+      return `${listVar}.add(${idx}, ${to});\n`;
+    }
+    return `${listVar}.set(${idx}, ${to});\n`;
+  };
+
+  // ---------------------------------------------------------------------
   // Variables (declared as fields on the listener/command class, typed
   // Object so any block value can be stored in them -- simple and robust
   // for a beginner-facing tool).
@@ -565,6 +671,84 @@
     const name = g.getVariableName(block.getFieldValue('VAR'));
     const value = g.valueToCode(block, 'VALUE', Order.NONE) || 'null';
     return `${name} = ${value};\n`;
+  };
+
+  // ---------------------------------------------------------------------
+  // MiniMessage-formatted text (colors/gradients/bold/etc via tags).
+  // ---------------------------------------------------------------------
+  F['mc_action_send_minimessage'] = (block, g) => {
+    const player = playerInput(g, block);
+    const message = str(g, block, 'MESSAGE', '""');
+    return `${player}.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(${message}));\n`;
+  };
+
+  F['mc_action_broadcast_minimessage'] = (block, g) => {
+    const message = str(g, block, 'MESSAGE', '""');
+    return `getServer().sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(${message}));\n`;
+  };
+
+  // ---------------------------------------------------------------------
+  // LuckPerms (soft-dependency: every block below no-ops safely if the
+  // LuckPerms plugin isn't installed on the server, instead of throwing).
+  // ---------------------------------------------------------------------
+  function luckPerms() {
+    return 'org.bukkit.Bukkit.getPluginManager().isPluginEnabled("LuckPerms") ? net.luckperms.api.LuckPermsProvider.get() : null';
+  }
+
+  F['mc_action_luckperms_add_permission'] = (block, g) => {
+    const player = playerInput(g, block);
+    const permission = str(g, block, 'PERMISSION', '""');
+    return `{ net.luckperms.api.LuckPerms lp = ${luckPerms()}; if (lp != null) { net.luckperms.api.model.user.User lpUser = lp.getUserManager().getUser(${player}.getUniqueId()); if (lpUser != null) { lpUser.data().add(net.luckperms.api.node.types.PermissionNode.builder(${permission}).build()); lp.getUserManager().saveUser(lpUser); } } }\n`;
+  };
+
+  F['mc_action_luckperms_add_to_group'] = (block, g) => {
+    const player = playerInput(g, block);
+    const group = str(g, block, 'GROUP', '""');
+    return `{ net.luckperms.api.LuckPerms lp = ${luckPerms()}; if (lp != null) { net.luckperms.api.model.user.User lpUser = lp.getUserManager().getUser(${player}.getUniqueId()); if (lpUser != null) { lpUser.data().add(net.luckperms.api.node.types.InheritanceNode.builder(${group}).build()); lp.getUserManager().saveUser(lpUser); } } }\n`;
+  };
+
+  F['mc_value_luckperms_in_group'] = (block, g) => {
+    const player = playerInput(g, block);
+    const group = str(g, block, 'GROUP', '""');
+    return [`(new java.util.function.Supplier<Boolean>() { public Boolean get() { net.luckperms.api.LuckPerms lp = ${luckPerms()}; if (lp == null) return false; net.luckperms.api.model.user.User lpUser = lp.getUserManager().getUser(${player}.getUniqueId()); return lpUser != null && lpUser.getInheritedGroups(lpUser.getQueryOptions()).stream().anyMatch(gr -> gr.getName().equalsIgnoreCase(${group})); } }).get()`, Order.ATOMIC];
+  };
+
+  // ---------------------------------------------------------------------
+  // Persistent player data (survives restarts -- org.bukkit.persistence).
+  // ---------------------------------------------------------------------
+  F['mc_action_set_persistent_data'] = (block, g) => {
+    const player = playerInput(g, block);
+    const key = esc(block.getFieldValue('KEY') || 'myData');
+    const value = str(g, block, 'VALUE', '""');
+    return `${player}.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(this, ${key}), org.bukkit.persistence.PersistentDataType.STRING, ${value});\n`;
+  };
+
+  F['mc_value_persistent_data'] = (block, g) => {
+    const key = esc(block.getFieldValue('KEY') || 'myData');
+    const player = playerInput(g, block, 'PLAYER');
+    const dflt = str(g, block, 'DEFAULT', '""');
+    return [`${player}.getPersistentDataContainer().getOrDefault(new org.bukkit.NamespacedKey(this, ${key}), org.bukkit.persistence.PersistentDataType.STRING, ${dflt})`, Order.ATOMIC];
+  };
+
+  // ---------------------------------------------------------------------
+  // Unsafe / Advanced -- pastes the given text straight into the generated
+  // Java. No coercion, no type checking: whatever the user typed goes in
+  // verbatim, so a mistake here is a normal javac error, not a friendly
+  // block-shaped one.
+  // ---------------------------------------------------------------------
+  F['mc_unsafe_raw_statement'] = (block) => {
+    const code = block.getFieldValue('CODE') || '';
+    return code.trim() ? `${code}\n` : '';
+  };
+
+  F['mc_unsafe_raw_expression'] = (block) => {
+    const code = block.getFieldValue('CODE') || 'null';
+    return [`(${code})`, Order.NONE];
+  };
+
+  F['mc_unsafe_import_class'] = (block) => {
+    const code = block.getFieldValue('CLASSNAME') || 'java.lang.Object';
+    return [code, Order.ATOMIC];
   };
 
   window.QuintJava = Java;

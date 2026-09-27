@@ -206,10 +206,12 @@ const DEFAULT_VENDOR_SUBDIR = 'mc1.20.4';
 // the source of truth for which vendorDir a project resolves to.
 function compileClasspathFor(vendorDir) {
   const dir = path.join(VENDOR_DIR, vendorDir || DEFAULT_VENDOR_SUBDIR);
-  return [
+  const perVersion = [
     'paper-api.jar', 'adventure-api.jar', 'adventure-key.jar',
     'examination-api.jar', 'examination-string.jar', 'bungeecord-chat.jar',
-  ].map((f) => path.join(dir, f)).join(path.delimiter);
+    'adventure-text-minimessage.jar',
+  ].map((f) => path.join(dir, f));
+  return [...perVersion, path.join(VENDOR_DIR, 'luckperms-api.jar')].join(path.delimiter);
 }
 
 let javaBinCache; // undefined = not yet checked, null = checked, not found, string = resolved path

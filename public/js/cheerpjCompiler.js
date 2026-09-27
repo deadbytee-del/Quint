@@ -22,10 +22,12 @@
   // (+ matching adventure/examination/bungeecord-chat versions) under
   // public/vendor/<vendorDir>/ -- see app.js's MC_VERSIONS table.
   function pluginClasspathFor(vendorDir) {
-    return [
+    const perVersion = [
       'paper-api.jar', 'adventure-api.jar', 'adventure-key.jar',
       'examination-api.jar', 'examination-string.jar', 'bungeecord-chat.jar',
-    ].map((f) => `/app/vendor/${vendorDir || DEFAULT_VENDOR_DIR}/${f}`).join(':');
+      'adventure-text-minimessage.jar',
+    ].map((f) => `/app/vendor/${vendorDir || DEFAULT_VENDOR_DIR}/${f}`);
+    return [...perVersion, '/app/vendor/luckperms-api.jar'].join(':');
   }
 
   let initPromise = null;

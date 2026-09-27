@@ -8,11 +8,18 @@ Quint also has an **auto-decompilation** feature: drop in *any* existing plugin 
 
 ## Features
 
-- 🧱 **Drag-and-connect visual editor** built on [Blockly](https://developers.google.com/blockly), styled after Scratch with a deep purple/black dark theme and [Lucide](https://lucide.dev) icons throughout, and categories for Events, Commands, Actions, Sensing, Control, Logic, Math, Text and Variables.
+- 🧱 **Drag-and-connect visual editor** built on [Blockly](https://developers.google.com/blockly), styled after Scratch with a deep purple/black dark theme and [Lucide](https://lucide.dev) icons throughout, and categories for Events, Commands, Actions, Sensing, Control, Logic, Math, Text, Lists, Variables, and a separate ⚠️ Unsafe/Advanced category.
 - 🔒 **Real typed sockets, not "anything fits anywhere."** A Player-shaped value only plugs into a player socket, a Boolean-shaped one only into a condition, and so on — Blockly rejects the wrong shape before you can even connect it, instead of generating Java that fails to compile. Values still nest freely wherever the type actually matches (e.g. plug "the online player named ___"'s location straight into "teleport to").
+- ✅ **Pre-build validation** — Quint checks the whole workspace before compiling: a block that isn't connected to any event/command, or a socket nobody filled in, is reported with a plain-English list up front instead of surfacing as a cryptic Java error (or a plugin that silently does less than it looks like it does).
+- 🧮 **A real variable system** — one variable can hold a number, a string, a boolean, a list, a player, whatever you last stored in it, so `set score = 0` → `set score = score + 1` → `if score >= 10` just works, same as lists (`create list with`, `for each item in list`, get/set/length/is empty), no separate "make a number/string/list variable" step.
+- ✨ **MiniMessage-formatted text** — send/broadcast blocks that accept MiniMessage tags (`<gradient:#ff0000:#8000ff><bold>Welcome!</bold></gradient>`, `<red>...</red>`) for real colored/gradient/bold chat, on top of the plain-text versions.
+- 🛡️ **LuckPerms integration (optional)** — give a player a permission or group permanently, or check group membership, via a soft dependency that safely no-ops if LuckPerms isn't installed on the server; auto-added to `plugin.yml`'s `softdepend` whenever you use one.
+- 💾 **Persistent player data** — save/read a value on a player that survives server restarts (`PersistentDataContainer`-backed), separate from a plugin's in-memory variables.
+- ⚠️ **An explicit Unsafe/Advanced category** — raw Java statement/expression/class-reference blocks as an escape hatch for whatever a friendly block doesn't cover yet, clearly red and clearly labeled: no coercion, no type checking, a mistake here is a normal `javac` error.
+- 🔌 **Dependency manager** — declare other plugins your plugin hard/soft-depends on in Plugin Settings; written straight into `plugin.yml`.
 - ⚡ **29 events** (join/quit/chat/death/respawn, drop/pickup item, sneak/sprint toggle, XP level change, mob death, block break/place/ignite, interact, damage (including PvP), teleport, world change, kick, hotbar switch, vehicle enter/exit, inventory clicks, bed enter, any command typed, plugin start/stop) and **custom `/commands`**.
-- 🎮 **35 actions** — messaging (chat, broadcast, titles, action bar), items & inventory (give/remove/equip/clear), teleport (by coordinates or by a Location value), health/hunger/XP, potion effects, flight & walk speed, sounds & particles, mob spawning, weather/time/lightning/explosions, game mode, kicking, permissions, spawn points, running server console commands, and both one-shot ("wait then...") and repeating ("every N ticks...") delayed actions.
-- 🔎 **23 sensing blocks** — player health/max health/hunger/XP/position/location/world, permissions, sneaking/OP status, inventory contents, block type, online player count, looking up a player by name, random numbers, and more.
+- 🎮 **39 actions** — messaging (chat, broadcast, titles, action bar, MiniMessage-formatted chat/broadcast), items & inventory (give/remove/equip/clear), teleport (by coordinates or by a Location value), health/hunger/XP, potion effects, flight & walk speed, sounds & particles, mob spawning, weather/time/lightning/explosions, game mode, kicking, permissions (plain + LuckPerms), persistent player data, spawn points, running server console commands, and both one-shot ("wait then...") and repeating ("every N ticks...") delayed actions.
+- 🔎 **26 sensing blocks** — player health/max health/hunger/XP/position/location/world, permissions (plain + LuckPerms group check), persistent data, sneaking/OP status, inventory contents, block type, online player count, looking up a player by name, random numbers, and more.
 - 👀 **View the generated Java** at any time — nothing is hidden, so it also works as a way to *learn* Bukkit/Paper plugin development.
 - 📦 **Real builds, zero install** — click "Build Plugin" to compile a genuine, ready-to-use `.jar` (or download the Maven source project instead) without installing a JDK, Maven, or anything else. See "How the in-browser compiler works" below.
 - 🧭 **Targets Minecraft 1.21.11 or 1.20.4** — pick either in Plugin Settings; each compiles against its own real, matching Paper API.
@@ -78,7 +85,8 @@ public/                       the entire app -- a plain static site, no backend 
   vendor/                      vendored jars for the in-browser/native compiler/decompiler
     ecj.jar                     Eclipse Compiler for Java (compiles the generated source)
     cfr.jar                      the CFR decompiler
-    mc1.21.11/                  paper-api.jar + matching adventure/examination/bungeecord-chat versions
+    luckperms-api.jar             LuckPerms API (compile-only; LuckPerms itself is optional at runtime)
+    mc1.21.11/                  paper-api.jar + matching adventure/examination/bungeecord-chat/minimessage versions
     mc1.20.4/                    for that Minecraft/Paper version -- pick one in Plugin Settings
   js/projectTemplate.js        pom.xml / plugin.yml text builder
   js/blocks.js                 custom Blockly block definitions + toolbox
@@ -96,4 +104,4 @@ Every plugin is generated as a **single Java class** that extends `JavaPlugin`, 
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The vendored jars under `public/vendor/` keep their own upstream licenses (Eclipse Public License for ECJ, MIT for CFR, GPLv3-with-classpath-exception-style for the Paper API/Adventure/BungeeCord-Chat).
+MIT, see [LICENSE](LICENSE). The vendored jars under `public/vendor/` keep their own upstream licenses (Eclipse Public License for ECJ, MIT for CFR, GPLv3-with-classpath-exception-style for the Paper API/Adventure/BungeeCord-Chat/MiniMessage, MIT for the LuckPerms API).
