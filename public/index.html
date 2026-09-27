@@ -33,10 +33,6 @@
   </div>
 </header>
 
-<div id="static-mode-banner" hidden>
-  ℹ️ Running in <b>demo mode</b> (no build server detected, e.g. on GitHub Pages) — you can still design plugins and download the Maven source project, but compiling a ready-to-use <code>.jar</code> and auto-decompiling an existing plugin need the full app running locally. <a href="https://github.com/deadbytee-del/Quint#running-it" target="_blank" rel="noopener">See "Running it" in the README</a>.
-</div>
-
 <main id="app">
   <div id="blockly-area">
     <div id="blocklyDiv"></div>
@@ -98,7 +94,7 @@
     <h2 id="build-title">▶️ Build Plugin</h2>
     <div id="build-body">
       <p>Choose what you'd like to build:</p>
-      <p id="build-static-note" class="hint" hidden>No build server was detected (demo mode), so a compiled <code>.jar</code> isn't available here — download the source project below and run <code>mvn package</code> yourself, or run Quint locally for one-click jar builds.</p>
+      <p class="hint">Both run entirely in your browser — the first jar build or import on a page load takes a little longer while the in-browser Java engine loads.</p>
       <div class="build-choice">
         <button class="tb-btn success" id="btn-build-jar-real">📦 Download ready-to-use .jar</button>
         <button class="tb-btn" id="btn-build-source">🗂️ Download Maven source project</button>
@@ -119,10 +115,6 @@
   <div class="modal modal-wide">
     <h2>🧩 Auto-Decompile Plugin</h2>
     <div id="decompile-body">
-      <div id="decompile-unavailable" hidden>
-        <p>Auto-decompilation needs a real Java decompiler running on a server, so it isn't available in this demo (e.g. on GitHub Pages).</p>
-        <p class="hint">Clone the repo and run <code>npm install &amp;&amp; npm start</code> to use this feature locally — see the README's "Running it" section.</p>
-      </div>
       <div id="decompile-progress">
         <div class="spinner"></div>
         <span>Decompiling jar and looking for recognizable blocks…</span>
@@ -153,6 +145,8 @@
 <script src="js/projectTemplate.js"></script>
 <script src="js/blocks.js"></script>
 <script src="js/generator.js"></script>
+<script src="js/blockify.js"></script>
+<script src="js/cheerpjCompiler.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

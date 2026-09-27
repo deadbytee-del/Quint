@@ -1,7 +1,5 @@
-// Builds the pom.xml / plugin.yml text for a Quint project. Shared verbatim
-// between the browser (client-side zip export for the GitHub Pages / no-backend
-// build) and the Node server (real `mvn package` build), so both ever agree on
-// what a "Quint project" looks like on disk.
+// Builds the pom.xml / plugin.yml text for a Quint project (used for the
+// "download Maven source project" export, built entirely client-side).
 (function (root, factory) {
   const mod = factory();
   if (typeof module !== 'undefined' && module.exports) {
