@@ -118,7 +118,74 @@
     return scopedIdentifier(generator, block, 'player', '((org.bukkit.entity.Player) null)');
   }
 
+  // Walks up from a block to the enclosing mc_command_define hat, for
+  // blocks (like the "not enough arguments" guard) that want to mention
+  // the command's own name in a message without the user typing it twice.
+  function findCommandName(block) {
+    let b = block;
+    while (b) {
+      if (b.type === 'mc_command_define') return b.getFieldValue('CMDNAME') || 'command';
+      b = b.getSurroundParent();
+    }
+    return 'command';
+  }
+
   const F = Java.forBlock;
+
+  // ---------------------------------------------------------------------
+  // More Commands blocks
+  // ---------------------------------------------------------------------
+  F['mc_command_reply'] = (block, g) => {
+    if (!inScope(g, 'sender')) {
+      block.setWarningText('This only works inside a command.');
+      return '';
+    }
+    block.setWarningText(null);
+    const msg = str(g, block, 'MESSAGE', '""');
+    return `sender.sendMessage(${msg});\n`;
+  };
+
+  F['mc_command_require_player'] = (block, g) => {
+    const body = g.statementToCode(block, 'DO');
+    if (!inScope(g, 'player')) {
+      block.setWarningText('This only works inside a command.');
+      return body;
+    }
+    block.setWarningText(null);
+    return `if (player != null) {\n${body}} else {\n    sender.sendMessage("Only players can use this command.");\n}\n`;
+  };
+
+  F['mc_command_require_permission'] = (block, g) => {
+    const body = g.statementToCode(block, 'DO');
+    if (!inScope(g, 'sender')) {
+      block.setWarningText('This only works inside a command.');
+      return body;
+    }
+    block.setWarningText(null);
+    const permission = str(g, block, 'PERMISSION', '""');
+    return `if (sender.hasPermission(${permission})) {\n${body}} else {\n    sender.sendMessage("You don't have permission to use this command.");\n}\n`;
+  };
+
+  F['mc_command_require_arg_count'] = (block, g) => {
+    const body = g.statementToCode(block, 'DO');
+    if (!inScope(g, 'args')) {
+      block.setWarningText('This only works inside a command.');
+      return body;
+    }
+    block.setWarningText(null);
+    const count = num(g, block, 'COUNT', 1);
+    const usage = esc(`Usage: /${findCommandName(block)} ...`);
+    return `if (args.length >= ${toInt(count)}) {\n${body}} else {\n    sender.sendMessage(${usage});\n}\n`;
+  };
+
+  F['mc_command_arg_count'] = (block, g) => {
+    if (!inScope(g, 'args')) {
+      block.setWarningText('This only works inside a command.');
+      return ['0', Order.ATOMIC];
+    }
+    block.setWarningText(null);
+    return ['args.length', Order.ATOMIC];
+  };
 
   // ---------------------------------------------------------------------
   // Actions
@@ -750,6 +817,297 @@
     const code = block.getFieldValue('CLASSNAME') || 'java.lang.Object';
     return [code, Order.ATOMIC];
   };
+
+  F['mc_unsafe_new_instance'] = (block) => {
+    const className = block.getFieldValue('CLASSNAME') || 'java.lang.Object';
+    const args = block.getFieldValue('ARGS') || '';
+    return [`(new ${className}(${args}))`, Order.ATOMIC];
+  };
+
+  F['mc_unsafe_static_call'] = (block) => {
+    const className = block.getFieldValue('CLASSNAME') || 'java.lang.Object';
+    const method = block.getFieldValue('METHOD') || 'toString';
+    const args = block.getFieldValue('ARGS') || '';
+    return [`${className}.${method}(${args})`, Order.ATOMIC];
+  };
+
+  F['mc_unsafe_cast'] = (block, g) => {
+    const type = block.getFieldValue('TYPE') || 'java.lang.Object';
+    const value = val(g, block, 'VALUE', 'null');
+    return [`((${type}) (${value}))`, Order.ATOMIC];
+  };
+
+  F['mc_unsafe_comment'] = (block) => {
+    const text = String(block.getFieldValue('TEXT') || '').replace(/[\r\n]+/g, ' ');
+    return `// ${text}\n`;
+  };
+
+  F['mc_unsafe_try_catch'] = (block, g) => {
+    const tryBody = g.statementToCode(block, 'TRY');
+    const catchBody = g.statementToCode(block, 'CATCH');
+    return `try {\n${tryBody}} catch (Exception quintEx) {\n${catchBody}}\n`;
+  };
+
+  // ---------------------------------------------------------------------
+  // More Math blocks (stock Blockly block types, targeting java.lang.Math).
+  // ---------------------------------------------------------------------
+  F['math_single'] = (block, g) => {
+    const op = block.getFieldValue('OP');
+    if (op === 'NEG') return [`(-${num(g, block, 'NUM', 0)})`, Order.ATOMIC];
+    const n = num(g, block, 'NUM', 0);
+    const OPS = {
+      ABS: `Math.abs(${n})`, ROOT: `Math.sqrt(${n})`, LN: `Math.log(${n})`,
+      LOG10: `Math.log10(${n})`, EXP: `Math.exp(${n})`, POW10: `Math.pow(10, ${n})`,
+    };
+    return [`(${OPS[op] || n})`, Order.ATOMIC];
+  };
+
+  F['math_trig'] = (block, g) => {
+    const op = block.getFieldValue('OP');
+    const n = num(g, block, 'NUM', 0);
+    const OPS = {
+      SIN: `Math.sin(Math.toRadians(${n}))`, COS: `Math.cos(Math.toRadians(${n}))`, TAN: `Math.tan(Math.toRadians(${n}))`,
+      ASIN: `Math.toDegrees(Math.asin(${n}))`, ACOS: `Math.toDegrees(Math.acos(${n}))`, ATAN: `Math.toDegrees(Math.atan(${n}))`,
+    };
+    return [`(${OPS[op] || n})`, Order.ATOMIC];
+  };
+
+  F['math_round'] = (block, g) => {
+    const op = block.getFieldValue('OP');
+    const n = num(g, block, 'NUM', 0);
+    if (op === 'ROUNDUP') return [`Math.ceil(${n})`, Order.ATOMIC];
+    if (op === 'ROUNDDOWN') return [`Math.floor(${n})`, Order.ATOMIC];
+    return [`((double) Math.round(${n}))`, Order.ATOMIC];
+  };
+
+  F['math_constant'] = (block) => {
+    const CONSTS = {
+      PI: 'Math.PI', E: 'Math.E', GOLDEN_RATIO: '((1 + Math.sqrt(5)) / 2)',
+      SQRT2: 'Math.sqrt(2)', SQRT1_2: 'Math.sqrt(0.5)', INFINITY: 'Double.POSITIVE_INFINITY',
+    };
+    return [CONSTS[block.getFieldValue('CONSTANT')] || '0', Order.ATOMIC];
+  };
+
+  F['math_number_property'] = (block, g) => {
+    const property = block.getFieldValue('PROPERTY');
+    const n = num(g, block, 'NUMBER_TO_CHECK', 0);
+    switch (property) {
+      case 'EVEN': return [`(${n} % 2 == 0)`, Order.ATOMIC];
+      case 'ODD': return [`(${n} % 2 != 0)`, Order.ATOMIC];
+      case 'WHOLE': return [`(${n} % 1 == 0)`, Order.ATOMIC];
+      case 'POSITIVE': return [`(${n} > 0)`, Order.ATOMIC];
+      case 'NEGATIVE': return [`(${n} < 0)`, Order.ATOMIC];
+      case 'DIVISIBLE_BY': {
+        const divisor = num(g, block, 'DIVISOR', 1);
+        return [`(${n} % ${divisor} == 0)`, Order.ATOMIC];
+      }
+      case 'PRIME':
+        return [`(new java.util.function.Supplier<Boolean>() { public Boolean get() { double quintN = ${n}; if (quintN != Math.floor(quintN) || quintN < 2) return false; if (quintN == 2) return true; if (quintN % 2 == 0) return false; for (int quintI = 3; quintI * quintI <= quintN; quintI += 2) { if (quintN % quintI == 0) return false; } return true; } }).get()`, Order.ATOMIC];
+      default:
+        return ['false', Order.ATOMIC];
+    }
+  };
+
+  F['math_modulo'] = (block, g) => {
+    const dividend = num(g, block, 'DIVIDEND', 0);
+    const divisor = num(g, block, 'DIVISOR', 1);
+    return [`(${dividend} % ${divisor})`, Order.ATOMIC];
+  };
+
+  F['math_constrain'] = (block, g) => {
+    const value = num(g, block, 'VALUE', 0);
+    const low = num(g, block, 'LOW', 0);
+    const high = num(g, block, 'HIGH', 0);
+    return [`Math.min(Math.max(${value}, ${low}), ${high})`, Order.ATOMIC];
+  };
+
+  F['math_random_int'] = (block, g) => {
+    const from = num(g, block, 'FROM', 1);
+    const to = num(g, block, 'TO', 10);
+    return [`(new java.util.function.Supplier<Integer>() { public Integer get() { double quintA = ${from}, quintB = ${to}; if (quintA > quintB) { double quintT = quintA; quintA = quintB; quintB = quintT; } return (int) Math.floor(Math.random() * (quintB - quintA + 1) + quintA); } }).get()`, Order.ATOMIC];
+  };
+
+  F['math_random_float'] = () => ['Math.random()', Order.ATOMIC];
+
+  F['math_change'] = (block, g) => {
+    const varName = g.getVariableName(block.getFieldValue('VAR'));
+    const delta = num(g, block, 'DELTA', 1);
+    return `${varName} = (((Object) ${varName}) instanceof Number ? ${asDouble(varName)} : 0.0) + ${delta};\n`;
+  };
+
+  F['math_on_list'] = (block, g) => {
+    const op = block.getFieldValue('OP');
+    const listVar = asList(g.valueToCode(block, 'LIST', Order.NONE));
+    const nums = `(new java.util.function.Supplier<java.util.List<Double>>() { public java.util.List<Double> get() { java.util.List<Double> quintNums = new java.util.ArrayList<Double>(); for (Object quintItem : ${listVar}) { quintNums.add(((Object) quintItem) instanceof Number ? ${asDouble('quintItem')} : 0.0); } return quintNums; } }).get()`;
+    switch (op) {
+      case 'SUM': return [`${nums}.stream().mapToDouble(Double::doubleValue).sum()`, Order.ATOMIC];
+      case 'MIN': return [`${nums}.stream().mapToDouble(Double::doubleValue).min().orElse(0)`, Order.ATOMIC];
+      case 'MAX': return [`${nums}.stream().mapToDouble(Double::doubleValue).max().orElse(0)`, Order.ATOMIC];
+      case 'AVERAGE': return [`${nums}.stream().mapToDouble(Double::doubleValue).average().orElse(0)`, Order.ATOMIC];
+      case 'RANDOM': return [`(new java.util.function.Supplier<Double>() { public Double get() { java.util.List<Double> quintL = ${nums}; return quintL.isEmpty() ? 0.0 : quintL.get(new java.util.Random().nextInt(quintL.size())); } }).get()`, Order.ATOMIC];
+      case 'MEDIAN': return [`(new java.util.function.Supplier<Double>() { public Double get() { java.util.List<Double> quintL = new java.util.ArrayList<Double>(${nums}); if (quintL.isEmpty()) return 0.0; java.util.Collections.sort(quintL); int quintMid = quintL.size() / 2; return quintL.size() % 2 == 0 ? (quintL.get(quintMid - 1) + quintL.get(quintMid)) / 2 : quintL.get(quintMid); } }).get()`, Order.ATOMIC];
+      case 'STD_DEV': return [`(new java.util.function.Supplier<Double>() { public Double get() { java.util.List<Double> quintL = ${nums}; if (quintL.isEmpty()) return 0.0; double quintMean = quintL.stream().mapToDouble(Double::doubleValue).average().orElse(0); double quintVar = quintL.stream().mapToDouble(quintX -> (quintX - quintMean) * (quintX - quintMean)).average().orElse(0); return Math.sqrt(quintVar); } }).get()`, Order.ATOMIC];
+      case 'MODE': return [`(new java.util.function.Supplier<Double>() { public Double get() { java.util.List<Double> quintL = ${nums}; java.util.Map<Double, Integer> quintCounts = new java.util.HashMap<Double, Integer>(); double quintBest = 0; int quintBestCount = -1; for (Double quintV : quintL) { int quintC = quintCounts.merge(quintV, 1, Integer::sum); if (quintC > quintBestCount) { quintBestCount = quintC; quintBest = quintV; } } return quintBest; } }).get()`, Order.ATOMIC];
+      default: return ['0.0', Order.ATOMIC];
+    }
+  };
+
+  // ---------------------------------------------------------------------
+  // More Text blocks (stock Blockly block types, targeting java.lang.String).
+  // ---------------------------------------------------------------------
+  F['text_length'] = (block, g) => [`(${str(g, block, 'VALUE', '""')}).length()`, Order.ATOMIC];
+  F['text_isEmpty'] = (block, g) => [`(${str(g, block, 'VALUE', '""')}).isEmpty()`, Order.ATOMIC];
+
+  F['text_indexOf'] = (block, g) => {
+    const haystack = str(g, block, 'VALUE', '""');
+    const needle = str(g, block, 'FIND', '""');
+    const method = block.getFieldValue('END') === 'LAST' ? 'lastIndexOf' : 'indexOf';
+    return [`((${haystack}).${method}(${needle}) + 1)`, Order.ATOMIC];
+  };
+
+  F['text_charAt'] = (block, g) => {
+    const where = block.getFieldValue('WHERE') || 'FROM_START';
+    const s = str(g, block, 'VALUE', '""');
+    if (where === 'FIRST') return [`(${s}).substring(0, 1)`, Order.ATOMIC];
+    if (where === 'LAST') return [`(${s}).substring((${s}).length() - 1)`, Order.ATOMIC];
+    if (where === 'RANDOM') return [`(new java.util.function.Supplier<String>() { public String get() { String quintS = ${s}; return quintS.isEmpty() ? "" : String.valueOf(quintS.charAt(new java.util.Random().nextInt(quintS.length()))); } }).get()`, Order.ATOMIC];
+    const at = num(g, block, 'AT', 1);
+    const idx = where === 'FROM_END' ? `((${s}).length() - ${toInt(at)})` : `(${toInt(at)} - 1)`;
+    return [`(new java.util.function.Supplier<String>() { public String get() { String quintS = ${s}; int quintI = ${idx}; return (quintI >= 0 && quintI < quintS.length()) ? String.valueOf(quintS.charAt(quintI)) : ""; } }).get()`, Order.ATOMIC];
+  };
+
+  function textBoundExpr(g, block, whereField, atField, strExpr, isStart) {
+    const where = block.getFieldValue(whereField) || (isStart ? 'FIRST' : 'LAST');
+    if (isStart) {
+      if (where === 'FIRST') return '0';
+      if (where === 'FROM_END') return `(${strExpr}.length() - ${toInt(num(g, block, atField, 1))})`;
+      return `(${toInt(num(g, block, atField, 1))} - 1)`;
+    }
+    if (where === 'LAST') return `${strExpr}.length()`;
+    if (where === 'FROM_END') return `(${strExpr}.length() - ${toInt(num(g, block, atField, 1))} + 1)`;
+    return `${toInt(num(g, block, atField, 1))}`;
+  }
+
+  F['text_getSubstring'] = (block, g) => {
+    const strExpr = `(${str(g, block, 'STRING', '""')})`;
+    const start = textBoundExpr(g, block, 'WHERE1', 'AT1', strExpr, true);
+    const end = textBoundExpr(g, block, 'WHERE2', 'AT2', strExpr, false);
+    const clampedStart = `Math.max(0, Math.min(${strExpr}.length(), ${start}))`;
+    const clampedEnd = `Math.max(0, Math.min(${strExpr}.length(), ${end}))`;
+    return [`${strExpr}.substring(${clampedStart}, Math.max(${clampedStart}, ${clampedEnd}))`, Order.ATOMIC];
+  };
+
+  F['text_changeCase'] = (block, g) => {
+    const mode = block.getFieldValue('CASE');
+    const s = str(g, block, 'TEXT', '""');
+    if (mode === 'UPPERCASE') return [`(${s}).toUpperCase()`, Order.ATOMIC];
+    if (mode === 'LOWERCASE') return [`(${s}).toLowerCase()`, Order.ATOMIC];
+    return [`(new java.util.function.Supplier<String>() { public String get() { String[] quintWords = (${s}).split(" "); StringBuilder quintOut = new StringBuilder(); for (int quintI = 0; quintI < quintWords.length; quintI++) { if (quintI > 0) quintOut.append(" "); String quintW = quintWords[quintI]; if (!quintW.isEmpty()) quintOut.append(Character.toUpperCase(quintW.charAt(0))).append(quintW.substring(1).toLowerCase()); } return quintOut.toString(); } }).get()`, Order.ATOMIC];
+  };
+
+  F['text_trim'] = (block, g) => {
+    const mode = block.getFieldValue('MODE');
+    const s = str(g, block, 'TEXT', '""');
+    if (mode === 'LEFT') return [`(${s}).replaceAll("^\\\\s+", "")`, Order.ATOMIC];
+    if (mode === 'RIGHT') return [`(${s}).replaceAll("\\\\s+$", "")`, Order.ATOMIC];
+    return [`(${s}).trim()`, Order.ATOMIC];
+  };
+
+  F['text_count'] = (block, g) => {
+    const text = str(g, block, 'TEXT', '""');
+    const sub = str(g, block, 'SUB', '""');
+    return [`(new java.util.function.Supplier<Integer>() { public Integer get() { String quintT = ${text}, quintS = ${sub}; return quintS.isEmpty() ? quintT.length() + 1 : (quintT.length() - quintT.replace(quintS, "").length()) / quintS.length(); } }).get()`, Order.ATOMIC];
+  };
+
+  F['text_replace'] = (block, g) => {
+    const text = str(g, block, 'TEXT', '""');
+    const from = str(g, block, 'FROM', '""');
+    const to = str(g, block, 'TO', '""');
+    return [`(${text}).replace(${from}, ${to})`, Order.ATOMIC];
+  };
+
+  F['text_reverse'] = (block, g) => [`new StringBuilder(${str(g, block, 'TEXT', '""')}).reverse().toString()`, Order.ATOMIC];
+
+  F['text_append'] = (block, g) => {
+    const varName = g.getVariableName(block.getFieldValue('VAR'));
+    const text = str(g, block, 'TEXT', '""');
+    return `${varName} = String.valueOf(${varName}) + ${text};\n`;
+  };
+
+  // ---------------------------------------------------------------------
+  // More Logic blocks
+  // ---------------------------------------------------------------------
+  F['logic_ternary'] = (block, g) => {
+    const rawIf = g.valueToCode(block, 'IF', Order.NONE);
+    const cond = rawIf ? asBoolean(rawIf) : 'false';
+    const then = val(g, block, 'THEN', 'null');
+    const els = val(g, block, 'ELSE', 'null');
+    return [`(${cond} ? (Object)(${then}) : (Object)(${els}))`, Order.ATOMIC];
+  };
+
+  F['logic_null'] = () => ['((Object) null)', Order.ATOMIC];
+
+  // ---------------------------------------------------------------------
+  // More Lists blocks (stock Blockly block types, targeting java.util.List<Object>).
+  // ---------------------------------------------------------------------
+  F['lists_create_empty'] = () => ['new java.util.ArrayList<Object>()', Order.ATOMIC];
+
+  F['lists_repeat'] = (block, g) => {
+    const item = val(g, block, 'ITEM', 'null');
+    const count = num(g, block, 'NUM', 0);
+    return [`(new java.util.function.Supplier<java.util.List<Object>>() { public java.util.List<Object> get() { java.util.List<Object> quintList = new java.util.ArrayList<Object>(); int quintN = ${toInt(count)}; for (int quintI = 0; quintI < quintN; quintI++) { quintList.add(${item}); } return quintList; } }).get()`, Order.ATOMIC];
+  };
+
+  F['lists_indexOf'] = (block, g) => {
+    const listVar = asList(g.valueToCode(block, 'VALUE', Order.NONE));
+    const find = val(g, block, 'FIND', 'null');
+    const method = block.getFieldValue('END') === 'LAST' ? 'lastIndexOf' : 'indexOf';
+    return [`(${listVar}.${method}(${find}) + 1)`, Order.ATOMIC];
+  };
+
+  F['lists_sort'] = (block, g) => {
+    const listVar = asList(g.valueToCode(block, 'LIST', Order.NONE));
+    const type = block.getFieldValue('TYPE') || 'NUMERIC';
+    const dir = block.getFieldValue('DIRECTION') === '-1' ? -1 : 1;
+    let cmpBody;
+    if (type === 'NUMERIC') cmpBody = `Double.compare(${asDouble('quintX')}, ${asDouble('quintY')})`;
+    else if (type === 'IGNORE_CASE') cmpBody = `String.valueOf(quintX).compareToIgnoreCase(String.valueOf(quintY))`;
+    else cmpBody = `String.valueOf(quintX).compareTo(String.valueOf(quintY))`;
+    return [`(new java.util.function.Supplier<java.util.List<Object>>() { public java.util.List<Object> get() { java.util.List<Object> quintList = new java.util.ArrayList<Object>(${listVar}); quintList.sort((quintX, quintY) -> ${dir} * (${cmpBody})); return quintList; } }).get()`, Order.ATOMIC];
+  };
+
+  F['lists_split'] = (block, g) => {
+    const delim = str(g, block, 'DELIM', '""');
+    const mode = block.getFieldValue('MODE') || 'SPLIT';
+    if (mode === 'JOIN') {
+      const listVar = asList(g.valueToCode(block, 'INPUT', Order.NONE));
+      return [`String.join(${delim}, ${listVar}.stream().map(String::valueOf).toArray(String[]::new))`, Order.ATOMIC];
+    }
+    const input = str(g, block, 'INPUT', '""');
+    return [`new java.util.ArrayList<Object>(java.util.Arrays.asList((${input}).split(java.util.regex.Pattern.quote(${delim}), -1)))`, Order.ATOMIC];
+  };
+
+  F['lists_reverse'] = (block, g) => {
+    const listVar = asList(g.valueToCode(block, 'LIST', Order.NONE));
+    return [`(new java.util.function.Supplier<java.util.List<Object>>() { public java.util.List<Object> get() { java.util.List<Object> quintList = new java.util.ArrayList<Object>(${listVar}); java.util.Collections.reverse(quintList); return quintList; } }).get()`, Order.ATOMIC];
+  };
+
+  // ---------------------------------------------------------------------
+  // More Control blocks
+  // ---------------------------------------------------------------------
+  F['controls_for'] = (block, g) => {
+    const varName = g.getVariableName(block.getFieldValue('VAR'));
+    const from = num(g, block, 'FROM', 1);
+    const to = num(g, block, 'TO', 10);
+    const by = num(g, block, 'BY', 1);
+    const branch = g.statementToCode(block, 'DO');
+    const loopVar = g.nameDB_.getDistinctName('quintForLoop', Blockly.Names.NameType.VARIABLE);
+    const stepVar = g.nameDB_.getDistinctName('quintForStep', Blockly.Names.NameType.VARIABLE);
+    const endVar = g.nameDB_.getDistinctName('quintForEnd', Blockly.Names.NameType.VARIABLE);
+    return `for (double ${loopVar} = ${from}, ${stepVar} = (${by}), ${endVar} = (${to}); ${stepVar} >= 0 ? ${loopVar} <= ${endVar} : ${loopVar} >= ${endVar}; ${loopVar} += ${stepVar}) {\n    ${varName} = ${loopVar};\n${branch}}\n`;
+  };
+
+  F['controls_flow_statements'] = (block) => (block.getFieldValue('FLOW') === 'CONTINUE' ? 'continue;\n' : 'break;\n');
 
   window.QuintJava = Java;
   window.QuintJavaOrder = Order;

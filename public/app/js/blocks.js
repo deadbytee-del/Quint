@@ -100,6 +100,54 @@
   });
 
   // ---------------------------------------------------------------------
+  // More Commands blocks -- guards and helpers for writing robust /commands
+  // (only mc_command_define itself is a hat; these are ordinary blocks that
+  // only make sense inside one).
+  // ---------------------------------------------------------------------
+  define('mc_command_reply', {
+    message0: '↩ reply to whoever ran the command: %1',
+    args0: [{ type: 'input_value', name: 'MESSAGE' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: COMMAND_COLOR,
+    tooltip: 'Sends a message back to whoever ran the command -- works whether they\'re a real player or the server console (unlike "send message", which needs an actual player).',
+  });
+
+  define('mc_command_require_player', {
+    message0: '🧍 only continue if a player ran this command %1 %2',
+    args0: [{ type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: COMMAND_COLOR,
+    tooltip: 'If the console (not a real player) ran this command, tells them "Only players can use this command" and skips everything inside. Otherwise runs the blocks inside as normal, with "the player" available.',
+  });
+
+  define('mc_command_require_permission', {
+    message0: '🔑 only continue if allowed to %1 %2 %3',
+    args0: [{ type: 'input_value', name: 'PERMISSION' }, { type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: COMMAND_COLOR,
+    tooltip: 'If whoever ran the command doesn\'t have this permission node, tells them "You don\'t have permission to use this command" and skips everything inside.',
+  });
+
+  define('mc_command_require_arg_count', {
+    message0: '📋 only continue if at least %1 argument(s) were given %2 %3',
+    args0: [{ type: 'input_value', name: 'COUNT', check: 'Number' }, { type: 'input_dummy' }, { type: 'input_statement', name: 'DO' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: COMMAND_COLOR,
+    tooltip: 'If not enough arguments were typed after the command, shows a "Usage: /..." message and skips everything inside.',
+  });
+
+  define('mc_command_arg_count', {
+    message0: '📋 number of arguments given',
+    output: 'Number',
+    colour: COMMAND_COLOR,
+    tooltip: 'How many arguments were typed after the command name. Only available inside a command.',
+  });
+
+  // ---------------------------------------------------------------------
   // Actions (statement blocks that chain together inside a hat's body).
   // ---------------------------------------------------------------------
   const MATERIALS = [
@@ -792,6 +840,60 @@
     tooltip: 'UNSAFE: expands to the class name itself, so you can call static methods on any Java/Bukkit/Paper class Quint doesn\'t have a dedicated block for yet, e.g. combine with a raw expression: "java.util.UUID.randomUUID()".',
   });
 
+  define('mc_unsafe_new_instance', {
+    message0: '⚠️ new %1 ( %2 )',
+    args0: [
+      { type: 'field_input', name: 'CLASSNAME', text: 'org.bukkit.Location' },
+      { type: 'field_input', name: 'ARGS', text: 'player.getWorld(), 0, 100, 0' },
+    ],
+    output: null,
+    colour: UNSAFE_COLOR,
+    tooltip: 'UNSAFE: constructs a new instance of any fully-qualified Java class. The args text is pasted in exactly as typed -- no type checking at all.',
+  });
+
+  define('mc_unsafe_static_call', {
+    message0: '⚠️ call %1 . %2 ( %3 )',
+    args0: [
+      { type: 'field_input', name: 'CLASSNAME', text: 'org.bukkit.Bukkit' },
+      { type: 'field_input', name: 'METHOD', text: 'getServer' },
+      { type: 'field_input', name: 'ARGS', text: '' },
+    ],
+    output: null,
+    colour: UNSAFE_COLOR,
+    tooltip: 'UNSAFE: calls a static method on any fully-qualified Java/Bukkit/Paper class Quint doesn\'t have a dedicated block for yet. The args text is pasted in exactly as typed -- no type checking at all.',
+  });
+
+  define('mc_unsafe_cast', {
+    message0: '⚠️ treat %2 as type %1',
+    args0: [
+      { type: 'field_input', name: 'TYPE', text: 'org.bukkit.entity.Player' },
+      { type: 'input_value', name: 'VALUE' },
+    ],
+    output: null,
+    colour: UNSAFE_COLOR,
+    tooltip: 'UNSAFE: casts a value to any fully-qualified Java type, e.g. to call a method only available on a more specific type than what a sensing block gives you. A wrong type here is a runtime crash (ClassCastException), not a friendly block warning.',
+  });
+
+  define('mc_unsafe_comment', {
+    message0: '💭 note: %1',
+    args0: [{ type: 'field_input', name: 'TEXT', text: 'explain what this does' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: UNSAFE_COLOR,
+    tooltip: 'Adds a plain code comment to the generated Java -- does nothing at runtime, just documentation. (Not actually unsafe -- it lives here because it\'s Java-code-flavored, not a Minecraft action.)',
+  });
+
+  define('mc_unsafe_try_catch', {
+    message0: '⚠️ try: %1',
+    args0: [{ type: 'input_statement', name: 'TRY' }],
+    message1: 'if something goes wrong: %1',
+    args1: [{ type: 'input_statement', name: 'CATCH' }],
+    previousStatement: null,
+    nextStatement: null,
+    colour: UNSAFE_COLOR,
+    tooltip: 'UNSAFE: runs the first set of blocks, and if any of them throws a Java exception (crashes), runs the second set instead of crashing the whole event/command. Advanced -- most plugins never need this.',
+  });
+
   // ---------------------------------------------------------------------
   // Toolbox
   // ---------------------------------------------------------------------
@@ -816,7 +918,10 @@
         'mc_event_kick', 'mc_event_change_world', 'mc_event_teleport', 'mc_event_damage_by_entity',
         'mc_event_item_held', 'mc_event_vehicle_enter', 'mc_event_vehicle_exit',
       ]),
-      cat('Commands', COMMAND_COLOR, ['mc_command_define']),
+      cat('Commands', COMMAND_COLOR, [
+        'mc_command_define', 'mc_command_reply', 'mc_command_arg_count',
+        'mc_command_require_player', 'mc_command_require_permission', 'mc_command_require_arg_count',
+      ]),
       cat('Actions', ACTION_COLOR, [
         'mc_action_send_message', 'mc_action_broadcast', 'mc_action_send_minimessage', 'mc_action_broadcast_minimessage',
         'mc_action_send_title', 'mc_action_send_actionbar',
@@ -840,8 +945,8 @@
         'mc_value_command_sender', 'mc_value_command_arg', 'mc_value_command_args_joined',
       ]),
       cat('Control', CONTROL_COLOR, [
-        'controls_if', 'controls_repeat_ext', 'controls_whileUntil', 'controls_forEach',
-        'mc_action_wait_then', 'mc_action_repeat_every_ticks',
+        'controls_if', 'controls_repeat_ext', 'controls_for', 'controls_whileUntil', 'controls_forEach',
+        'controls_flow_statements', 'mc_action_wait_then', 'mc_action_repeat_every_ticks',
       ]),
       { kind: 'category', name: 'Logic', colour: '#5C81A6', contents: [
         { kind: 'block', type: 'logic_compare' },
@@ -849,25 +954,57 @@
         { kind: 'block', type: 'mc_logic_xor' },
         { kind: 'block', type: 'logic_negate' },
         { kind: 'block', type: 'logic_boolean' },
+        { kind: 'block', type: 'logic_null' },
+        { kind: 'block', type: 'logic_ternary' },
       ] },
       { kind: 'category', name: 'Math', colour: '#5C68A6', contents: [
         { kind: 'block', type: 'math_number' },
         { kind: 'block', type: 'math_arithmetic' },
+        { kind: 'block', type: 'math_single' },
+        { kind: 'block', type: 'math_trig' },
+        { kind: 'block', type: 'math_round' },
+        { kind: 'block', type: 'math_constant' },
+        { kind: 'block', type: 'math_number_property' },
+        { kind: 'block', type: 'math_modulo' },
+        { kind: 'block', type: 'math_constrain' },
+        { kind: 'block', type: 'math_random_int' },
+        { kind: 'block', type: 'math_random_float' },
+        { kind: 'block', type: 'math_on_list' },
+        { kind: 'block', type: 'math_change' },
       ] },
       { kind: 'category', name: 'Text', colour: '#5CA65C', contents: [
         { kind: 'block', type: 'text' },
         { kind: 'block', type: 'text_join' },
+        { kind: 'block', type: 'text_append' },
+        { kind: 'block', type: 'text_length' },
+        { kind: 'block', type: 'text_isEmpty' },
+        { kind: 'block', type: 'text_indexOf' },
+        { kind: 'block', type: 'text_charAt' },
+        { kind: 'block', type: 'text_getSubstring' },
+        { kind: 'block', type: 'text_changeCase' },
+        { kind: 'block', type: 'text_trim' },
+        { kind: 'block', type: 'text_count' },
+        { kind: 'block', type: 'text_replace' },
+        { kind: 'block', type: 'text_reverse' },
       ] },
       { kind: 'category', name: 'Lists', colour: '#745CA6', contents: [
         { kind: 'block', type: 'lists_create_with' },
+        { kind: 'block', type: 'lists_create_empty' },
+        { kind: 'block', type: 'lists_repeat' },
         { kind: 'block', type: 'lists_length' },
         { kind: 'block', type: 'lists_isEmpty' },
+        { kind: 'block', type: 'lists_indexOf' },
         { kind: 'block', type: 'lists_getIndex' },
         { kind: 'block', type: 'lists_setIndex' },
+        { kind: 'block', type: 'lists_sort' },
+        { kind: 'block', type: 'lists_split' },
+        { kind: 'block', type: 'lists_reverse' },
       ] },
       { kind: 'category', name: 'Variables', colour: '#A65C81', custom: 'VARIABLE' },
       cat('⚠️ Unsafe / Advanced', UNSAFE_COLOR, [
         'mc_unsafe_raw_statement', 'mc_unsafe_raw_expression', 'mc_unsafe_import_class',
+        'mc_unsafe_new_instance', 'mc_unsafe_static_call', 'mc_unsafe_cast',
+        'mc_unsafe_comment', 'mc_unsafe_try_catch',
       ]),
     ],
   };

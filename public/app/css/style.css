@@ -91,6 +91,8 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
    cascade tie (author styles apply after UA styles) -- without this,
    toggling the `hidden` attribute/property never actually hides it. */
 .dropdown-panel[hidden] { display: none; }
+@keyframes dropdownIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.dropdown-panel { animation: dropdownIn 0.12s ease-out; }
 #project-rename-label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
 #project-rename-label span { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--ink-faint); }
 #project-rename-input {
@@ -196,7 +198,10 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
   z-index: 1000;
 }
 .modal-backdrop[hidden] { display: none; }
+@keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-backdrop { animation: backdropIn 0.12s ease-out; }
 
+@keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 .modal {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -207,6 +212,7 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
   max-height: 86vh;
   overflow: auto;
   box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.06);
+  animation: modalIn 0.15s ease-out;
 }
 .modal.modal-wide { width: 700px; }
 
@@ -372,6 +378,8 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
 #toast[hidden] { display: none; }
 #toast.error { background: #3a1414; border-color: var(--danger-dark); color: #fecaca; }
 #toast.success { background: #0f2e1c; border-color: var(--success-dark); color: #bbf7d0; }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+#toast { animation: toastIn 0.18s ease-out; }
 
 /* ---------- Full-screen project selector (the app's "home screen") ---------- */
 #view-start {
@@ -383,7 +391,9 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
     radial-gradient(ellipse 900px 500px at 15% -10%, var(--purple-glow), transparent),
     radial-gradient(ellipse 700px 500px at 100% 10%, rgba(157, 100, 163, 0.12), transparent);
   overflow-y: auto;
+  animation: viewFadeIn 0.18s ease-out;
 }
+@keyframes viewFadeIn { from { opacity: 0; } to { opacity: 1; } }
 #start-header {
   display: flex;
   align-items: center;
@@ -438,7 +448,9 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
   text-align: left;
   font-family: inherit;
   transition: border-color 0.15s, transform 0.1s;
+  animation: cardIn 0.15s ease-out backwards;
 }
+@keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .start-card:hover { border-color: var(--purple); transform: translateY(-2px); }
 .start-card b { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .start-card span.start-card-meta { font-size: 11.5px; color: var(--ink-faint); }
