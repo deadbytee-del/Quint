@@ -58,6 +58,36 @@
   </div>
 </main>
 
+<div id="view-start" hidden>
+  <header id="start-header">
+    <div id="brand">
+      <span id="brand-icon"><i data-lucide="blocks"></i></span>
+      <span id="brand-name">Quint</span>
+    </div>
+    <button class="tb-btn" id="start-back-to-editor" hidden><i data-lucide="arrow-left"></i> Back to Editor</button>
+  </header>
+  <div id="start-body">
+    <div id="start-hero">
+      <h1>Your Projects</h1>
+      <div id="start-search">
+        <i data-lucide="search"></i>
+        <input id="start-search-input" type="text" placeholder="Search your projects&hellip;" spellcheck="false" />
+      </div>
+    </div>
+    <div id="start-grid">
+      <button class="start-card start-card-new" id="start-new-project" type="button">
+        <i data-lucide="plus"></i>
+        <span>New Project</span>
+      </button>
+    </div>
+    <p id="start-empty" hidden>No projects match your search.</p>
+    <div id="start-footer">
+      <button class="tb-btn" id="start-btn-load"><i data-lucide="folder-open"></i> Load a project file&hellip;</button>
+      <button class="tb-btn" id="start-btn-examples"><i data-lucide="library"></i> Browse examples&hellip;</button>
+    </div>
+  </div>
+</div>
+
 <footer id="statusbar">
   <span id="status-text">Drag blocks from the left to build your plugin. Nothing is running yet.</span>
 </footer>
@@ -126,18 +156,6 @@
       </select>
     </div>
 
-    <div class="modal-actions">
-      <button class="tb-btn" data-close>Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="modal-projects" hidden>
-  <div class="modal">
-    <h2><i data-lucide="history"></i> My Projects</h2>
-    <p class="hint">Saved automatically in this browser.</p>
-    <div id="projects-list"></div>
-    <p id="projects-empty" hidden>No saved projects yet — start building!</p>
     <div class="modal-actions">
       <button class="tb-btn" data-close>Close</button>
     </div>
