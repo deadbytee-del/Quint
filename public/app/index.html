@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Quint — the world's easiest Minecraft plugin creator</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='2.5'%3E%3Crect x='3' y='3' width='7' height='7' rx='1'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1'/%3E%3Crect x='8.5' y='14' width='7' height='7' rx='1'/%3E%3C/svg%3E" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239d64a3' stroke-width='2.5'%3E%3Crect x='3' y='3' width='7' height='7' rx='1'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1'/%3E%3Crect x='8.5' y='14' width='7' height='7' rx='1'/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -189,10 +189,13 @@
     <h2 id="build-title"><i data-lucide="hammer"></i> Build Plugin</h2>
     <div id="build-body">
       <p>Choose what you'd like to build:</p>
-      <p class="hint">Both run entirely in your browser — the first jar build or import on a page load takes a little longer while the in-browser Java engine loads.</p>
+      <p class="hint">Runs entirely on your machine — the first build or import in a session takes a little longer while the Java engine loads.</p>
       <div class="build-choice">
         <button class="tb-btn success" id="btn-build-jar-real"><i data-lucide="package-check"></i> Download ready-to-use .jar</button>
         <button class="tb-btn" id="btn-build-source"><i data-lucide="folder-archive"></i> Download Maven source project</button>
+      </div>
+      <div id="build-jar-locked" hidden>
+        <p class="hint"><i data-lucide="lock"></i> Compiling a ready-to-use .jar is a desktop app feature. <a href="../" target="_blank" rel="noopener">Download Quint</a> to compile, or use "Download Maven source project" below and build it yourself.</p>
       </div>
       <div id="build-progress" hidden>
         <div class="spinner"></div>

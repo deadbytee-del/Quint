@@ -42,17 +42,17 @@
     base: Blockly.Themes.Classic,
     fontStyle: { family: '"Segoe UI", "Inter", system-ui, sans-serif', weight: 'normal', size: 9 },
     componentStyles: {
-      workspaceBackgroundColour: '#0b0712',
-      toolboxBackgroundColour: '#140d24',
+      workspaceBackgroundColour: '#1f171d',
+      toolboxBackgroundColour: '#2e1f2a',
       toolboxForegroundColour: '#ece7f7',
-      flyoutBackgroundColour: '#140d24',
+      flyoutBackgroundColour: '#2e1f2a',
       flyoutForegroundColour: '#ece7f7',
       flyoutOpacity: 1,
-      scrollbarColour: '#251a40',
+      scrollbarColour: '#482b41',
       scrollbarOpacity: 0.9,
-      insertionMarkerColour: '#8b5cf6',
+      insertionMarkerColour: '#9d64a3',
       insertionMarkerOpacity: 0.4,
-      cursorColour: '#c4b5fd',
+      cursorColour: '#c19ec5',
     },
   });
 
@@ -66,7 +66,7 @@
       theme: QUINT_BLOCKLY_THEME,
       trashcan: true,
       zoom: { controls: true, wheel: true, startScale: 0.75, minScale: 0.3, maxScale: 2 },
-      grid: { spacing: 25, length: 3, colour: '#251a40', snap: true },
+      grid: { spacing: 25, length: 3, colour: '#482b41', snap: true },
       move: { scrollbars: true, drag: true, wheel: true },
     });
     workspace.addChangeListener((e) => {
@@ -764,6 +764,12 @@ ${eventMethods}}
   if (window.quintDesktop) {
     const exeBtn = document.getElementById('btn-download-exe');
     if (exeBtn) exeBtn.style.display = 'none';
+  } else {
+    // Compiling a real .jar is a desktop-app-only feature; the browser
+    // build only offers the Maven source project.
+    document.getElementById('btn-build-jar-real').style.display = 'none';
+    document.getElementById('build-jar-locked').hidden = false;
+    if (window.lucide) lucide.createIcons();
   }
 
   // -----------------------------------------------------------------------
@@ -843,6 +849,7 @@ ${eventMethods}}
   }
 
   async function runBuild(mode, downloadName) {
+    if (mode === 'jar' && !window.quintDesktop) return; // compiling a .jar is desktop-app only
     const progress = document.getElementById('build-progress');
     const progressText = document.getElementById('build-progress-text');
     const log = document.getElementById('build-log');

@@ -1,16 +1,16 @@
 :root {
-  --bg: #0b0712;
-  --bg-elevated: #140d24;
-  --bg-elevated-2: #1c1333;
-  --bg-elevated-3: #251a40;
-  --purple: #8b5cf6;
-  --purple-dark: #6d28d9;
-  --purple-light: #c4b5fd;
-  --purple-glow: rgba(139, 92, 246, 0.35);
+  --bg: #1f171d;
+  --bg-elevated: #2e1f2a;
+  --bg-elevated-2: #3a2535;
+  --bg-elevated-3: #482b41;
+  --purple: #9d64a3;
+  --purple-dark: #744778;
+  --purple-light: #c19ec5;
+  --purple-glow: rgba(157, 100, 163, 0.35);
   --ink: #ece7f7;
   --ink-dim: #a79bc7;
   --ink-faint: #786a99;
-  --border: #2c2046;
+  --border: #3f2a3a;
   --success: #22c55e;
   --success-dark: #16a34a;
   --danger: #f87171;
@@ -38,7 +38,7 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
   gap: 12px;
   height: 46px;
   padding: 0 10px;
-  background: linear-gradient(90deg, #0d0817, #1a0f2e 55%, #241338);
+  background: linear-gradient(90deg, #191318, #2a1c26 55%, #3d2738);
   border-bottom: 1px solid var(--border);
   color: var(--ink);
   flex-wrap: nowrap;
@@ -174,7 +174,7 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 22px;
-  background: #0d0817;
+  background: #191318;
   border-top: 1px solid var(--border);
   color: var(--ink-faint);
   font-size: 11px;
@@ -376,7 +376,7 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
   background: var(--bg);
   background-image:
     radial-gradient(ellipse 900px 500px at 15% -10%, var(--purple-glow), transparent),
-    radial-gradient(ellipse 700px 500px at 100% 10%, rgba(139, 92, 246, 0.12), transparent);
+    radial-gradient(ellipse 700px 500px at 100% 10%, rgba(157, 100, 163, 0.12), transparent);
   overflow-y: auto;
 }
 #start-header {
