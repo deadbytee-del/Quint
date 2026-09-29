@@ -146,7 +146,7 @@ async function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'Quint',
-    backgroundColor: '#0b0712',
+    backgroundColor: '#1f171d',
     show: false,
     icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: {
