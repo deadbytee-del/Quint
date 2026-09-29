@@ -102,6 +102,7 @@
   }
 
   let meta = defaultMeta();
+  let startViewFilter = ''; // declared early: the project picker can be shown during boot, before the rest of its own section runs
 
   function defaultMeta() {
     return {
@@ -406,6 +407,7 @@ ${eventMethods}}
       syncTitleFromName();
       if (prefs.zoomFit) workspace.zoomToFit();
       saveProjectSnapshot();
+      hideStartView();
       toast('Project loaded!', 'success');
     } catch (err) {
       toast('That file could not be read as a Quint project.', 'error');
@@ -501,8 +503,11 @@ ${eventMethods}}
         localStorage.removeItem('quint-autosave');
       }
 
-      const lastId = localStorage.getItem('quint-last-project-id');
-      if (lastId) loadProjectById(lastId);
+      // Land on the project picker whenever there's something to pick from,
+      // instead of silently resuming whatever was open last -- if this is
+      // the very first launch ever (nothing saved yet), skip straight to
+      // the empty default project since there's nothing to choose.
+      if (projectsIndexGet().length > 0) showStartView();
     } catch (e) { /* ignore, just start fresh */ }
   })();
 
@@ -586,55 +591,91 @@ ${eventMethods}}
     return `${days} day${days === 1 ? '' : 's'} ago`;
   }
 
-  function renderProjectsList() {
-    const listEl = document.getElementById('projects-list');
-    const emptyEl = document.getElementById('projects-empty');
-    const projects = projectsIndexGet().sort((a, b) => b.updatedAt - a.updatedAt);
-    listEl.innerHTML = '';
-    emptyEl.hidden = projects.length > 0;
+  // -----------------------------------------------------------------------
+  // Full-screen project selector -- the app's "home screen". Shown on
+  // launch whenever at least one project has ever been saved (so opening
+  // Quint means picking up where you left off, not guessing), and any
+  // time you click "Projects". It's a plain view swap within this one
+  // page (no navigation, no reload) -- the editor underneath keeps
+  // whatever state it had.
+  // -----------------------------------------------------------------------
+  function showStartView() {
+    if (meta.id) autosave(); // save in-progress work before leaving the editor -- nothing to save yet at first launch
+    document.getElementById('start-back-to-editor').hidden = !meta.id;
+    document.getElementById('start-search-input').value = startViewFilter;
+    renderStartGrid();
+    document.getElementById('view-start').hidden = false;
+    document.getElementById('start-search-input').focus();
+  }
+
+  function hideStartView() {
+    document.getElementById('view-start').hidden = true;
+  }
+
+  function renderStartGrid() {
+    const grid = document.getElementById('start-grid');
+    const emptyEl = document.getElementById('start-empty');
+    // Keep the "New Project" tile; only replace the project cards after it.
+    grid.querySelectorAll('.start-card:not(.start-card-new)').forEach((el) => el.remove());
+
+    const q = startViewFilter.trim().toLowerCase();
+    const projects = projectsIndexGet()
+      .filter((p) => !q || p.name.toLowerCase().includes(q))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+
+    emptyEl.hidden = projects.length > 0 || !q;
+
     for (const p of projects) {
-      const row = document.createElement('div');
-      row.className = 'project-row';
-      row.innerHTML = `
-        <div class="project-info">
-          <b>${escapeHtml(p.name)}</b>
-          <span>${timeAgo(p.updatedAt)}</span>
-        </div>
-        <div class="project-actions">
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'start-card';
+      card.innerHTML = `
+        <b>${escapeHtml(p.name)}</b>
+        <span class="start-card-meta">${timeAgo(p.updatedAt)}</span>
+        <span class="start-card-actions">
           <span class="icon-btn" data-action="rename" title="Rename"><i data-lucide="pencil"></i></span>
-          <span class="icon-btn" data-action="delete" title="Delete"><i data-lucide="trash-2"></i></span>
-        </div>`;
-      row.querySelector('.project-info').addEventListener('click', () => {
+          <span class="icon-btn danger" data-action="delete" title="Delete"><i data-lucide="trash-2"></i></span>
+        </span>`;
+      card.addEventListener('click', () => {
         if (loadProjectById(p.id)) {
-          hideModal('modal-projects');
+          hideStartView();
           toast(`Loaded "${p.name}"`, 'success');
         } else {
           toast('Could not load that project.', 'error');
         }
       });
-      row.querySelector('[data-action="rename"]').addEventListener('click', (e) => {
+      card.querySelector('[data-action="rename"]').addEventListener('click', (e) => {
         e.stopPropagation();
         if (renameProjectById(p.id, p.name)) {
-          renderProjectsList();
+          renderStartGrid();
           toast('Project renamed.', 'success');
         }
       });
-      row.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
+      card.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
         e.stopPropagation();
         if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
         deleteProject(p.id);
-        renderProjectsList();
+        renderStartGrid();
         toast('Project deleted.', 'success');
       });
-      listEl.appendChild(row);
+      grid.appendChild(card);
     }
     if (window.lucide) lucide.createIcons();
   }
 
-  document.getElementById('btn-projects').addEventListener('click', () => {
-    renderProjectsList();
-    showModal('modal-projects');
+  document.getElementById('start-search-input').addEventListener('input', (e) => {
+    startViewFilter = e.target.value;
+    renderStartGrid();
   });
+  document.getElementById('start-new-project').addEventListener('click', () => {
+    startNewProject();
+    hideStartView();
+  });
+  document.getElementById('start-back-to-editor').addEventListener('click', hideStartView);
+  document.getElementById('start-btn-load').addEventListener('click', () => document.getElementById('file-load-input').click());
+  document.getElementById('start-btn-examples').addEventListener('click', () => document.getElementById('btn-examples').click());
+
+  document.getElementById('btn-projects').addEventListener('click', showStartView);
 
   // -----------------------------------------------------------------------
   // Project menu: click the project name to rename it, start a new
@@ -713,8 +754,7 @@ ${eventMethods}}
   });
   document.getElementById('menu-all-projects').addEventListener('click', () => {
     setProjectMenuOpen(false);
-    renderProjectsList();
-    showModal('modal-projects');
+    showStartView();
   });
 
   // -----------------------------------------------------------------------
@@ -751,6 +791,7 @@ ${eventMethods}}
           syncTitleFromName();
           if (prefs.zoomFit) workspace.zoomToFit();
           hideModal('modal-examples');
+          hideStartView();
           toast(`Loaded example: ${ex.title}`, 'success');
         });
         list.appendChild(card);

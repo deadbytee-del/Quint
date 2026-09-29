@@ -299,8 +299,8 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
 }
 .tab.active { background: var(--purple); color: white; border-color: var(--purple-dark); }
 
-#examples-list, #projects-list { display: flex; flex-direction: column; gap: 6px; }
-.example-card, .project-row {
+#examples-list { display: flex; flex-direction: column; gap: 6px; }
+.example-card {
   border: 1px solid var(--border);
   background: var(--bg-elevated-2);
   border-radius: 9px;
@@ -308,33 +308,9 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-.example-card:hover, .project-row:hover { background: var(--bg-elevated-3); border-color: var(--purple-dark); }
+.example-card:hover { background: var(--bg-elevated-3); border-color: var(--purple-dark); }
 .example-card b { display: block; margin-bottom: 2px; font-size: 12.5px; }
 .example-card span { font-size: 11.5px; color: var(--ink-faint); }
-
-.project-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  cursor: default;
-}
-.project-row .project-info { cursor: pointer; flex: 1; min-width: 0; }
-.project-row .project-info b { display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.project-row .project-info span { font-size: 11px; color: var(--ink-faint); }
-.project-row .project-actions { display: flex; gap: 4px; flex-shrink: 0; }
-.project-row .icon-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated-3);
-  color: var(--ink-dim);
-  cursor: pointer;
-}
-.project-row .icon-btn:hover { border-color: var(--purple); color: var(--purple-light); }
-.project-row .icon-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
-#projects-empty { color: var(--ink-faint); font-size: 12px; padding: 8px 0; }
 
 /* ---------- App settings ---------- */
 .setting-row {
@@ -391,6 +367,112 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
 #toast[hidden] { display: none; }
 #toast.error { background: #3a1414; border-color: var(--danger-dark); color: #fecaca; }
 #toast.success { background: #0f2e1c; border-color: var(--success-dark); color: #bbf7d0; }
+
+/* ---------- Full-screen project selector (the app's "home screen") ---------- */
+#view-start {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 900px 500px at 15% -10%, var(--purple-glow), transparent),
+    radial-gradient(ellipse 700px 500px at 100% 10%, rgba(139, 92, 246, 0.12), transparent);
+  overflow-y: auto;
+}
+#start-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+#start-body { max-width: 1100px; margin: 0 auto; padding: 20px 28px 60px; }
+#start-hero { text-align: center; padding: 24px 0 32px; }
+#start-hero h1 { font-size: 28px; margin: 0 0 18px; }
+#start-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+#start-search svg { width: 15px; height: 15px; color: var(--ink-faint); flex-shrink: 0; }
+#start-search input {
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+}
+#start-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.start-card {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 16px;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.start-card:hover { border-color: var(--purple); transform: translateY(-2px); }
+.start-card b { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.start-card span.start-card-meta { font-size: 11.5px; color: var(--ink-faint); }
+.start-card-new {
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 8px;
+  border-style: dashed;
+  border-color: var(--purple-dark);
+  color: var(--purple-light);
+  font-weight: 700;
+  font-size: 13.5px;
+}
+.start-card-new:hover { background: var(--bg-elevated-2); border-color: var(--purple); }
+.start-card-new svg { width: 18px; height: 18px; }
+.start-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.start-card:hover .start-card-actions { opacity: 1; }
+.start-card-actions .icon-btn {
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px;
+  display: flex;
+  color: var(--ink-dim);
+}
+.start-card-actions .icon-btn:hover { border-color: var(--purple); color: var(--purple-light); }
+.start-card-actions .icon-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+.start-card-actions svg { width: 13px; height: 13px; }
+#start-empty { text-align: center; color: var(--ink-faint); font-size: 13px; padding: 30px 0; }
+#start-footer { display: flex; justify-content: center; gap: 10px; margin-top: 32px; }
 
 /* ---------- Blockly overrides for the dark theme ---------- */
 .blocklyMainBackground { stroke: none !important; fill: var(--bg) !important; }
