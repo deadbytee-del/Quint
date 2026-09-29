@@ -14,20 +14,33 @@
   'use strict';
 
   const CHEERPJ_LOADER_URL = 'https://cjrtnc.leaningtech.com/4.3/loader.js';
-  const ECJ_CLASSPATH = '/app/vendor/ecj.jar';
-  const CFR_CLASSPATH = '/app/vendor/cfr.jar';
+
+  // CheerpJ's own convention: with no explicit mount config, cheerpjInit()
+  // always maps "/app/" in its virtual filesystem to this PAGE'S ORIGIN
+  // ROOT (the domain root), regardless of which real directory this page
+  // itself lives in -- that's a CheerpJ detail, unrelated to any of our own
+  // URL structure. So a same-origin file needs its full path from the
+  // origin root here, not just a path relative to this page. We compute
+  // that dynamically (instead of assuming this page IS the origin root)
+  // so this keeps working whether Quint is hosted at a domain root, a
+  // GitHub Pages project subpath (e.g. /Quint/app/), or as the Electron
+  // app's own local server root (which already serves this directory as
+  // "/").
+  const SITE_ROOT = '/app' + location.pathname.replace(/[^/]*$/, '');
+  const ECJ_CLASSPATH = `${SITE_ROOT}vendor/ecj.jar`;
+  const CFR_CLASSPATH = `${SITE_ROOT}vendor/cfr.jar`;
   const DEFAULT_VENDOR_DIR = 'mc1.20.4';
 
   // Each supported Minecraft/Paper version has its own vendored paper-api.jar
   // (+ matching adventure/examination/bungeecord-chat versions) under
-  // public/vendor/<vendorDir>/ -- see app.js's MC_VERSIONS table.
+  // vendor/<vendorDir>/ -- see app.js's MC_VERSIONS table.
   function pluginClasspathFor(vendorDir) {
     const perVersion = [
       'paper-api.jar', 'adventure-api.jar', 'adventure-key.jar',
       'examination-api.jar', 'examination-string.jar', 'bungeecord-chat.jar',
       'adventure-text-minimessage.jar',
-    ].map((f) => `/app/vendor/${vendorDir || DEFAULT_VENDOR_DIR}/${f}`);
-    return [...perVersion, '/app/vendor/luckperms-api.jar'].join(':');
+    ].map((f) => `${SITE_ROOT}vendor/${vendorDir || DEFAULT_VENDOR_DIR}/${f}`);
+    return [...perVersion, `${SITE_ROOT}vendor/luckperms-api.jar`].join(':');
   }
 
   let initPromise = null;

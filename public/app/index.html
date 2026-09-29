@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quint — the world's easiest Minecraft plugin creator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='2.5'%3E%3Crect x='3' y='3' width='7' height='7' rx='1'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1'/%3E%3Crect x='8.5' y='14' width='7' height='7' rx='1'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="topbar">
+  <div id="brand">
+    <span id="brand-icon"><i data-lucide="blocks"></i></span>
+    <span id="brand-name">Quint</span>
+    <span id="brand-tag">block-code your own Minecraft plugin</span>
+  </div>
+
+  <div id="project-info">
+    <button id="project-menu-trigger" type="button" title="Project menu">
+      <span id="project-name-display">MyFirstPlugin</span>
+      <i data-lucide="chevron-down"></i>
+    </button>
+    <div id="project-menu" class="dropdown-panel" hidden>
+      <label id="project-rename-label">
+        <span>Rename this project</span>
+        <input id="project-rename-input" type="text" spellcheck="false" />
+      </label>
+      <button class="dropdown-item" id="menu-new-project"><i data-lucide="plus"></i> New Project</button>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-label">Recent Projects</div>
+      <div id="project-menu-recent"></div>
+      <p id="project-menu-recent-empty" class="dropdown-empty" hidden>No other saved projects yet.</p>
+      <button class="dropdown-item" id="menu-all-projects"><i data-lucide="history"></i> All Projects&hellip;</button>
+    </div>
+  </div>
+
+  <div id="toolbar-actions">
+    <button class="tb-btn" id="btn-new" title="New project"><i data-lucide="plus"></i> New</button>
+    <button class="tb-btn" id="btn-projects" title="My saved projects"><i data-lucide="history"></i> Projects</button>
+    <button class="tb-btn" id="btn-examples" title="Example projects"><i data-lucide="library"></i> Examples</button>
+    <button class="tb-btn" id="btn-save" title="Save project"><i data-lucide="save"></i> Save</button>
+    <button class="tb-btn" id="btn-load" title="Load project from file"><i data-lucide="folder-open"></i> Load</button>
+    <input id="file-load-input" type="file" accept=".json" hidden />
+    <button class="tb-btn" id="btn-import-jar" title="Import an existing plugin .jar"><i data-lucide="file-input"></i> Import .jar</button>
+    <input id="file-jar-input" type="file" accept=".jar" hidden />
+    <button class="tb-btn" id="btn-settings" title="Plugin settings"><i data-lucide="settings-2"></i> Plugin</button>
+    <button class="tb-btn" id="btn-app-settings" title="App preferences"><i data-lucide="settings"></i></button>
+    <button class="tb-btn primary" id="btn-view-code" title="View generated Java"><i data-lucide="code"></i> Code</button>
+    <button class="tb-btn success" id="btn-build-jar" title="Build your plugin"><i data-lucide="hammer"></i> Build</button>
+    <a class="tb-btn windows" id="btn-download-exe" href="https://github.com/deadbytee-del/Quint/releases/latest" target="_blank" rel="noopener" title="Download the Windows/Mac/Linux desktop app"><i data-lucide="monitor-down"></i> Get App</a>
+  </div>
+</header>
+
+<main id="app">
+  <div id="blockly-area">
+    <div id="blocklyDiv"></div>
+  </div>
+</main>
+
+<footer id="statusbar">
+  <span id="status-text">Drag blocks from the left to build your plugin. Nothing is running yet.</span>
+</footer>
+
+<!-- ============ Modals ============ -->
+
+<div class="modal-backdrop" id="modal-settings" hidden>
+  <div class="modal">
+    <h2><i data-lucide="settings-2"></i> Plugin Settings</h2>
+    <label>Plugin name<input id="set-name" type="text" /></label>
+    <label>Package name<input id="set-package" type="text" placeholder="com.yourname.plugin" /></label>
+    <label>Version<input id="set-version" type="text" placeholder="1.0.0" /></label>
+    <label>Description<input id="set-description" type="text" /></label>
+    <label>Author<input id="set-author" type="text" /></label>
+    <label>Minecraft / Paper API version
+      <select id="set-mcversion">
+        <option value="1.21.11">1.21.11 (latest)</option>
+        <option value="1.20.4">1.20.4</option>
+      </select>
+      <span class="hint">Which Paper API your plugin is compiled and packaged against.</span>
+    </label>
+    <label>Depends on these plugins (comma-separated, must be installed)
+      <input id="set-depend" type="text" placeholder="Vault, WorldGuard" />
+    </label>
+    <label>Optionally uses these plugins (comma-separated, works fine without them)
+      <input id="set-softdepend" type="text" placeholder="LuckPerms" />
+      <span class="hint">LuckPerms is added here automatically if your workspace uses any LuckPerms block.</span>
+    </label>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Cancel</button>
+      <button class="tb-btn primary" id="btn-settings-save"><i data-lucide="check"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-app-settings" hidden>
+  <div class="modal">
+    <h2><i data-lucide="settings"></i> App Preferences</h2>
+    <p class="hint">These are saved in this browser and apply to every project.</p>
+
+    <div class="setting-row">
+      <div><div class="setting-label">Autosave</div><div class="setting-desc">Keep saving your work as you go</div></div>
+      <label class="switch"><input type="checkbox" id="pref-autosave" /><span class="slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Confirm before New</div><div class="setting-desc">Ask before clearing the workspace</div></div>
+      <label class="switch"><input type="checkbox" id="pref-confirm-new" /><span class="slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Zoom to fit on load</div><div class="setting-desc">Auto-fit blocks when opening a project</div></div>
+      <label class="switch"><input type="checkbox" id="pref-zoom-fit" /><span class="slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Sound effects</div><div class="setting-desc">Little clicks for actions</div></div>
+      <label class="switch"><input type="checkbox" id="pref-sound" /><span class="slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Default author name</div><div class="setting-desc">Pre-fills new projects</div></div>
+      <input type="text" id="pref-author" placeholder="Your name" />
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Block style</div><div class="setting-desc">How blocks are rendered</div></div>
+      <select id="pref-renderer">
+        <option value="zelos">Rounded</option>
+        <option value="geras">Classic</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-projects" hidden>
+  <div class="modal">
+    <h2><i data-lucide="history"></i> My Projects</h2>
+    <p class="hint">Saved automatically in this browser.</p>
+    <div id="projects-list"></div>
+    <p id="projects-empty" hidden>No saved projects yet — start building!</p>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-examples" hidden>
+  <div class="modal">
+    <h2><i data-lucide="library"></i> Example Projects</h2>
+    <p class="hint">Load a finished example to see how the blocks fit together.</p>
+    <div id="examples-list"></div>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-code" hidden>
+  <div class="modal modal-wide">
+    <h2><i data-lucide="code"></i> Generated Java</h2>
+    <div id="code-tabs" class="tabs"></div>
+    <pre id="code-view" class="code-view"></pre>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-build" hidden>
+  <div class="modal modal-wide">
+    <h2 id="build-title"><i data-lucide="hammer"></i> Build Plugin</h2>
+    <div id="build-body">
+      <p>Choose what you'd like to build:</p>
+      <p class="hint">Both run entirely in your browser — the first jar build or import on a page load takes a little longer while the in-browser Java engine loads.</p>
+      <div class="build-choice">
+        <button class="tb-btn success" id="btn-build-jar-real"><i data-lucide="package-check"></i> Download ready-to-use .jar</button>
+        <button class="tb-btn" id="btn-build-source"><i data-lucide="folder-archive"></i> Download Maven source project</button>
+      </div>
+      <div id="build-progress" hidden>
+        <div class="spinner"></div>
+        <span id="build-progress-text">Building your plugin…</span>
+      </div>
+      <pre id="build-log" class="code-view" hidden></pre>
+    </div>
+    <div class="modal-actions">
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-decompile" hidden>
+  <div class="modal modal-wide">
+    <h2><i data-lucide="puzzle"></i> Auto-Decompile Plugin</h2>
+    <div id="decompile-body">
+      <div id="decompile-progress">
+        <div class="spinner"></div>
+        <span>Decompiling jar and looking for recognizable blocks…</span>
+      </div>
+      <div id="decompile-result" hidden>
+        <p id="decompile-stats"></p>
+        <div id="decompile-tabs" class="tabs"></div>
+        <pre id="decompile-source" class="code-view"></pre>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="tb-btn" id="btn-decompile-download-zip" hidden><i data-lucide="download"></i> Download source .zip</button>
+      <button class="tb-btn primary" id="btn-decompile-load-blocks" hidden><i data-lucide="blocks"></i> Load recognized blocks</button>
+      <button class="tb-btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+
+<!-- Blockly + JSZip + Lucide icons (loaded from CDN, no build step needed) -->
+<script src="https://cdn.jsdelivr.net/npm/blockly@11/blockly_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11/blocks_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11/msg/en.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@11/javascript_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+
+<script src="js/projectTemplate.js"></script>
+<script src="js/blocks.js"></script>
+<script src="js/generator.js"></script>
+<script src="js/blockify.js"></script>
+<script src="js/cheerpjCompiler.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

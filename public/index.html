@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Quint — the world's easiest Minecraft plugin creator</title>
-<link rel="stylesheet" href="css/style.css" />
+<title>Quint — download the Minecraft plugin creator</title>
+<meta name="description" content="Quint is a Scratch-style, drag-and-drop Minecraft plugin creator. Download the free desktop app for Windows, macOS, or Linux." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='2.5'%3E%3Crect x='3' y='3' width='7' height='7' rx='1'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1'/%3E%3Crect x='8.5' y='14' width='7' height='7' rx='1'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/landing.css" />
 </head>
 <body>
 
@@ -12,203 +14,105 @@
   <div id="brand">
     <span id="brand-icon"><i data-lucide="blocks"></i></span>
     <span id="brand-name">Quint</span>
-    <span id="brand-tag">block-code your own Minecraft plugin</span>
   </div>
-
-  <div id="project-info">
-    <input id="project-name-input" type="text" value="MyFirstPlugin" spellcheck="false" title="Plugin name" />
-  </div>
-
-  <div id="toolbar-actions">
-    <button class="tb-btn" id="btn-new" title="New project"><i data-lucide="plus"></i> New</button>
-    <button class="tb-btn" id="btn-projects" title="My saved projects"><i data-lucide="history"></i> Projects</button>
-    <button class="tb-btn" id="btn-examples" title="Example projects"><i data-lucide="library"></i> Examples</button>
-    <button class="tb-btn" id="btn-save" title="Save project"><i data-lucide="save"></i> Save</button>
-    <button class="tb-btn" id="btn-load" title="Load project from file"><i data-lucide="folder-open"></i> Load</button>
-    <input id="file-load-input" type="file" accept=".json" hidden />
-    <button class="tb-btn" id="btn-import-jar" title="Import an existing plugin .jar"><i data-lucide="file-input"></i> Import .jar</button>
-    <input id="file-jar-input" type="file" accept=".jar" hidden />
-    <button class="tb-btn" id="btn-settings" title="Plugin settings"><i data-lucide="settings-2"></i> Plugin</button>
-    <button class="tb-btn" id="btn-app-settings" title="App preferences"><i data-lucide="settings"></i></button>
-    <button class="tb-btn primary" id="btn-view-code" title="View generated Java"><i data-lucide="code"></i> Code</button>
-    <button class="tb-btn success" id="btn-build-jar" title="Build your plugin"><i data-lucide="hammer"></i> Build</button>
-    <a class="tb-btn windows" id="btn-download-exe" href="https://github.com/deadbytee-del/Quint/releases/latest" target="_blank" rel="noopener" title="Download the Windows/Mac/Linux desktop app"><i data-lucide="monitor-down"></i> Get App</a>
-  </div>
+  <nav id="topnav">
+    <a href="#downloads">Download</a>
+    <a href="#features">Features</a>
+    <a href="app/" id="nav-browser-link">Try in browser</a>
+    <a href="https://github.com/deadbytee-del/Quint" target="_blank" rel="noopener">GitHub</a>
+  </nav>
 </header>
 
-<main id="app">
-  <div id="blockly-area">
-    <div id="blocklyDiv"></div>
-  </div>
+<main>
+  <section id="hero">
+    <h1>Build Minecraft plugins by dragging blocks together.</h1>
+    <p class="lede">No Java experience required. Quint compiles real, ready-to-use Paper/Bukkit <code>.jar</code> plugins from a Scratch-style block editor &mdash; entirely on your own machine.</p>
+
+    <div id="primary-download">
+      <a id="btn-primary-download" class="btn-download primary" href="https://github.com/deadbytee-del/Quint/releases/latest" target="_blank" rel="noopener">
+        <i data-lucide="download"></i>
+        <span>
+          <b id="primary-download-label">Download for your computer</b>
+          <small id="primary-download-sub">Detecting your operating system&hellip;</small>
+        </span>
+      </a>
+      <div id="version-tag" hidden>Latest version: <span id="version-number">&hellip;</span></div>
+    </div>
+
+    <p class="or-browser">Prefer not to install anything? <a href="app/">Use Quint right in your browser</a> instead &mdash; same editor, no download.</p>
+  </section>
+
+  <section id="downloads">
+    <h2>Get Quint for your platform</h2>
+    <div id="download-grid">
+      <a class="download-card" id="dl-windows" href="https://github.com/deadbytee-del/Quint/releases/latest" target="_blank" rel="noopener">
+        <i data-lucide="monitor"></i>
+        <b>Windows</b>
+        <span class="dl-detail">.exe installer</span>
+      </a>
+      <a class="download-card" id="dl-mac" href="https://github.com/deadbytee-del/Quint/releases/latest" target="_blank" rel="noopener">
+        <i data-lucide="apple"></i>
+        <b>macOS</b>
+        <span class="dl-detail">.dmg &middot; Intel &amp; Apple Silicon</span>
+      </a>
+      <a class="download-card" id="dl-linux" href="https://github.com/deadbytee-del/Quint/releases/latest" target="_blank" rel="noopener">
+        <i data-lucide="terminal"></i>
+        <b>Linux</b>
+        <span class="dl-detail">.AppImage</span>
+      </a>
+    </div>
+    <p class="hint">Every download comes from <a href="https://github.com/deadbytee-del/Quint/releases" target="_blank" rel="noopener">Quint's GitHub Releases</a> &mdash; open source, nothing hidden. Not sure which file? Any button above takes you to the latest release page.</p>
+  </section>
+
+  <section id="features">
+    <h2>Why the desktop app</h2>
+    <div id="feature-grid">
+      <div class="feature">
+        <i data-lucide="zap"></i>
+        <b>Native compiling</b>
+        <p>Uses a Java runtime already on your machine when it finds one &mdash; builds finish in well under a second instead of several.</p>
+      </div>
+      <div class="feature">
+        <i data-lucide="wifi-off"></i>
+        <b>Works offline</b>
+        <p>After the first launch, Quint runs completely offline &mdash; no internet connection needed to build plugins.</p>
+      </div>
+      <div class="feature">
+        <i data-lucide="refresh-cw"></i>
+        <b>Auto-updates</b>
+        <p>New versions download in the background via GitHub Releases, so you're never stuck on an old build.</p>
+      </div>
+      <div class="feature">
+        <i data-lucide="puzzle"></i>
+        <b>Real, typed blocks</b>
+        <p>Events, actions, sensing, logic, lists, LuckPerms, MiniMessage, and more &mdash; blocks only connect where they actually make sense.</p>
+      </div>
+      <div class="feature">
+        <i data-lucide="file-code-2"></i>
+        <b>See the Java</b>
+        <p>View the exact generated source at any time &mdash; it also works as a way to learn real Bukkit/Paper plugin development.</p>
+      </div>
+      <div class="feature">
+        <i data-lucide="file-input"></i>
+        <b>Import existing plugins</b>
+        <p>Drop in any plugin <code>.jar</code> and Quint decompiles it into readable Java, reconstructing recognizable parts as blocks.</p>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer id="statusbar">
-  <span id="status-text">Drag blocks from the left to build your plugin. Nothing is running yet.</span>
+<footer>
+  <span>Quint is free and open source, MIT licensed.</span>
+  <span>
+    <a href="https://github.com/deadbytee-del/Quint" target="_blank" rel="noopener">Source on GitHub</a>
+    &middot;
+    <a href="https://github.com/deadbytee-del/Quint/issues" target="_blank" rel="noopener">Report an issue</a>
+    &middot;
+    <a href="app/">Browser version</a>
+  </span>
 </footer>
 
-<!-- ============ Modals ============ -->
-
-<div class="modal-backdrop" id="modal-settings" hidden>
-  <div class="modal">
-    <h2><i data-lucide="settings-2"></i> Plugin Settings</h2>
-    <label>Plugin name<input id="set-name" type="text" /></label>
-    <label>Package name<input id="set-package" type="text" placeholder="com.yourname.plugin" /></label>
-    <label>Version<input id="set-version" type="text" placeholder="1.0.0" /></label>
-    <label>Description<input id="set-description" type="text" /></label>
-    <label>Author<input id="set-author" type="text" /></label>
-    <label>Minecraft / Paper API version
-      <select id="set-mcversion">
-        <option value="1.21.11">1.21.11 (latest)</option>
-        <option value="1.20.4">1.20.4</option>
-      </select>
-      <span class="hint">Which Paper API your plugin is compiled and packaged against.</span>
-    </label>
-    <label>Depends on these plugins (comma-separated, must be installed)
-      <input id="set-depend" type="text" placeholder="Vault, WorldGuard" />
-    </label>
-    <label>Optionally uses these plugins (comma-separated, works fine without them)
-      <input id="set-softdepend" type="text" placeholder="LuckPerms" />
-      <span class="hint">LuckPerms is added here automatically if your workspace uses any LuckPerms block.</span>
-    </label>
-    <div class="modal-actions">
-      <button class="tb-btn" data-close>Cancel</button>
-      <button class="tb-btn primary" id="btn-settings-save"><i data-lucide="check"></i> Save</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="modal-app-settings" hidden>
-  <div class="modal">
-    <h2><i data-lucide="settings"></i> App Preferences</h2>
-    <p class="hint">These are saved in this browser and apply to every project.</p>
-
-    <div class="setting-row">
-      <div><div class="setting-label">Autosave</div><div class="setting-desc">Keep saving your work as you go</div></div>
-      <label class="switch"><input type="checkbox" id="pref-autosave" /><span class="slider"></span></label>
-    </div>
-    <div class="setting-row">
-      <div><div class="setting-label">Confirm before New</div><div class="setting-desc">Ask before clearing the workspace</div></div>
-      <label class="switch"><input type="checkbox" id="pref-confirm-new" /><span class="slider"></span></label>
-    </div>
-    <div class="setting-row">
-      <div><div class="setting-label">Zoom to fit on load</div><div class="setting-desc">Auto-fit blocks when opening a project</div></div>
-      <label class="switch"><input type="checkbox" id="pref-zoom-fit" /><span class="slider"></span></label>
-    </div>
-    <div class="setting-row">
-      <div><div class="setting-label">Sound effects</div><div class="setting-desc">Little clicks for actions</div></div>
-      <label class="switch"><input type="checkbox" id="pref-sound" /><span class="slider"></span></label>
-    </div>
-    <div class="setting-row">
-      <div><div class="setting-label">Default author name</div><div class="setting-desc">Pre-fills new projects</div></div>
-      <input type="text" id="pref-author" placeholder="Your name" />
-    </div>
-    <div class="setting-row">
-      <div><div class="setting-label">Block style</div><div class="setting-desc">How blocks are rendered</div></div>
-      <select id="pref-renderer">
-        <option value="zelos">Rounded</option>
-        <option value="geras">Classic</option>
-      </select>
-    </div>
-
-    <div class="modal-actions">
-      <button class="tb-btn" data-close>Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="modal-projects" hidden>
-  <div class="modal">
-    <h2><i data-lucide="history"></i> My Projects</h2>
-    <p class="hint">Saved automatically in this browser.</p>
-    <div id="projects-list"></div>
-    <p id="projects-empty" hidden>No saved projects yet — start building!</p>
-    <div class="modal-actions">
-      <button class="tb-btn" data-close>Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="modal-examples" hidden>
-  <div class="modal">
-    <h2><i data-lucide="library"></i> Example Projects</h2>
-    <p class="hint">Load a finished example to see how the blocks fit together.</p>
-    <div id="examples-list"></div>
-    <div class="modal-actions">
-      <button class="tb-btn" data-close>Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="modal-code" hidden>
-  <div class="modal modal-wide">
-    <h2><i data-lucide="code"></i> Generated Java</h2>
-    <div id="code-tabs" class="tabs"></div>
-    <pre id="code-view" class="code-view"></pre>
-    <div class="modal-actions">
-      <button class="tb-btn" data-close>Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="modal-build" hidden>
-  <div class="modal modal-wide">
-    <h2 id="build-title"><i data-lucide="hammer"></i> Build Plugin</h2>
-    <div id="build-body">
-      <p>Choose what you'd like to build:</p>
-      <p class="hint">Both run entirely in your browser — the first jar build or import on a page load takes a little longer while the in-browser Java engine loads.</p>
-      <div class="build-choice">
-        <button class="tb-btn success" id="btn-build-jar-real"><i data-lucide="package-check"></i> Download ready-to-use .jar</button>
-        <button class="tb-btn" id="btn-build-source"><i data-lucide="folder-archive"></i> Download Maven source project</button>
-      </div>
-      <div id="build-progress" hidden>
-        <div class="spinner"></div>
-        <span id="build-progress-text">Building your plugin…</span>
-      </div>
-      <pre id="build-log" class="code-view" hidden></pre>
-    </div>
-    <div class="modal-actions">
-      <button class="tb-btn" data-close>Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="modal-decompile" hidden>
-  <div class="modal modal-wide">
-    <h2><i data-lucide="puzzle"></i> Auto-Decompile Plugin</h2>
-    <div id="decompile-body">
-      <div id="decompile-progress">
-        <div class="spinner"></div>
-        <span>Decompiling jar and looking for recognizable blocks…</span>
-      </div>
-      <div id="decompile-result" hidden>
-        <p id="decompile-stats"></p>
-        <div id="decompile-tabs" class="tabs"></div>
-        <pre id="decompile-source" class="code-view"></pre>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="tb-btn" id="btn-decompile-download-zip" hidden><i data-lucide="download"></i> Download source .zip</button>
-      <button class="tb-btn primary" id="btn-decompile-load-blocks" hidden><i data-lucide="blocks"></i> Load recognized blocks</button>
-      <button class="tb-btn" data-close>Close</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast" hidden></div>
-
-<!-- Blockly + JSZip + Lucide icons (loaded from CDN, no build step needed) -->
-<script src="https://cdn.jsdelivr.net/npm/blockly@11/blockly_compressed.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/blockly@11/blocks_compressed.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/blockly@11/msg/en.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/blockly@11/javascript_compressed.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
-
-<script src="js/projectTemplate.js"></script>
-<script src="js/blocks.js"></script>
-<script src="js/generator.js"></script>
-<script src="js/blockify.js"></script>
-<script src="js/cheerpjCompiler.js"></script>
-<script src="js/app.js"></script>
+<script src="js/landing.js"></script>
 </body>
 </html>

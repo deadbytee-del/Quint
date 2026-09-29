@@ -67,7 +67,7 @@ function fixPathFromLoginShell() {
 function startLocalServer() {
   return new Promise((resolve) => {
     server = http.createServer((req, res) => {
-      handler(req, res, { public: path.join(__dirname, 'public') });
+      handler(req, res, { public: path.join(__dirname, 'public', 'app') });
     });
     server.listen(0, '127.0.0.1', () => resolve(server.address().port));
   });
@@ -197,12 +197,12 @@ ipcMain.handle('quint:save-file', async (event, base64Data, filename) => {
 // broken), callers fall back to the CheerpJ path in cheerpjCompiler.js --
 // this is purely an optional speed-up, never a hard requirement.
 // -----------------------------------------------------------------------
-const VENDOR_DIR = path.join(__dirname, 'public', 'vendor');
+const VENDOR_DIR = path.join(__dirname, 'public', 'app', 'vendor');
 const DEFAULT_VENDOR_SUBDIR = 'mc1.20.4';
 
 // Each supported Minecraft/Paper version has its own vendored paper-api.jar
 // (+ matching adventure/examination/bungeecord-chat versions) under
-// public/vendor/<vendorDir>/ -- see app.js's MC_VERSIONS table, which is
+// public/app/vendor/<vendorDir>/ -- see app.js's MC_VERSIONS table, which is
 // the source of truth for which vendorDir a project resolves to.
 function compileClasspathFor(vendorDir) {
   const dir = path.join(VENDOR_DIR, vendorDir || DEFAULT_VENDOR_SUBDIR);
