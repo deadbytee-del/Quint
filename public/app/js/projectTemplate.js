@@ -69,6 +69,23 @@
       <version>${project.paperVersion || DEFAULT_PAPER_VERSION}</version>
       <scope>provided</scope>
     </dependency>
+    <!-- Already a transitive dependency of paper-api; declared explicitly
+         because generated code can call it directly (MiniMessage blocks). -->
+    <dependency>
+      <groupId>net.kyori</groupId>
+      <artifactId>adventure-text-minimessage</artifactId>
+      <version>4.16.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- Only needed if you use a LuckPerms block; safe to leave even if
+         you don't -- it's compile-only and LuckPerms itself is optional
+         at runtime (see the softdepend in plugin.yml). -->
+    <dependency>
+      <groupId>net.luckperms</groupId>
+      <artifactId>api</artifactId>
+      <version>5.4</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -94,6 +111,14 @@
     ];
     if (project.description) lines.push(`description: "${escapeYaml(project.description)}"`);
     if (project.author) lines.push(`author: "${escapeYaml(project.author)}"`);
+    if (project.depend && project.depend.length) {
+      lines.push('depend:');
+      for (const name of project.depend) lines.push(`  - ${escapeYaml(name)}`);
+    }
+    if (project.softdepend && project.softdepend.length) {
+      lines.push('softdepend:');
+      for (const name of project.softdepend) lines.push(`  - ${escapeYaml(name)}`);
+    }
     if (commands && commands.length) {
       lines.push('commands:');
       for (const cmd of commands) {

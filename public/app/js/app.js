@@ -84,7 +84,7 @@
   // -----------------------------------------------------------------------
   // Which Minecraft/Paper version a project targets. Each entry has its own
   // vendored paper-api.jar (+ matching adventure/examination/bungeecord-chat
-  // versions) under public/vendor/<vendorDir>/, used for both the in-browser
+  // versions) under vendor/<vendorDir>/, used for both the in-browser
   // CheerpJ compile and the desktop app's native compile -- and the exact
   // strings a real pom.xml/plugin.yml need.
   const MC_VERSIONS = {
@@ -112,19 +112,34 @@
       description: 'Made with Quint.',
       author: prefs.author || '',
       mcVersion: DEFAULT_MC_VERSION,
+      depend: [],
+      softdepend: [],
     };
   }
 
+  // LuckPerms is an optional, soft dependency: auto-list it in plugin.yml
+  // whenever the workspace actually uses a LuckPerms block, on top of
+  // whatever the user typed into Plugin Settings, so people don't have to
+  // remember to declare it by hand.
+  function effectiveSoftDepend() {
+    const list = new Set(meta.softdepend || []);
+    const usesLuckPerms = workspace.getAllBlocks(false).some((b) => b.type.indexOf('luckperms') !== -1);
+    if (usesLuckPerms) list.add('LuckPerms');
+    return [...list];
+  }
+
+  function parseDependList(text) {
+    return String(text || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
   function syncTitleFromName() {
-    document.getElementById('project-name-input').value = meta.name;
+    document.getElementById('project-name-display').textContent = meta.name;
+    document.getElementById('project-rename-input').value = meta.name;
   }
   syncTitleFromName();
-
-  document.getElementById('project-name-input').addEventListener('change', (e) => {
-    meta.name = e.target.value.trim() || 'MyPlugin';
-    meta.mainClass = sanitizeIdentifier(meta.name, 'QuintMain');
-    autosave();
-  });
 
   // -----------------------------------------------------------------------
   // Helpers
@@ -137,6 +152,15 @@
 
   function sanitizeCmdName(name) {
     return sanitizeIdentifier(name, 'cmd').toLowerCase();
+  }
+
+  // Project names are arbitrary user text (including from a loaded .json
+  // file someone else sent you) that gets inserted into innerHTML below --
+  // escape it so a name like "<img src=x onerror=...>" can't run as markup.
+  function escapeHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
   }
 
   function toast(message, kind) {
@@ -238,7 +262,42 @@
     Java.hasQuitMsg = !!ctx.hasQuitMsg;
   }
 
+  // Pre-build validation: catches the two mistakes that would otherwise
+  // only surface as a confusing Java compile error (or silently produce a
+  // plugin that does less than the workspace looks like it does) --
+  // a block sitting disconnected from any event/command, and a value
+  // socket nobody ever filled in.
+  function blockLabel(b) {
+    return (b.type || 'block').replace(/^mc_/, '').replace(/[_-]+/g, ' ').trim();
+  }
+
+  function validateWorkspace() {
+    const problems = [];
+    const topLevelOk = new Set(['mc_on_enable', 'mc_on_disable', 'mc_command_define', ...Object.keys(EVENT_INFO)]);
+    workspace.getTopBlocks(true).forEach((b) => {
+      if (!topLevelOk.has(b.type)) {
+        problems.push({ id: b.id, text: `A "${blockLabel(b)}" block isn't connected to any event or command, so it will never run.` });
+      }
+    });
+    workspace.getAllBlocks(false).forEach((b) => {
+      if (!b.isEnabled()) return;
+      (b.inputList || []).forEach((input) => {
+        if (input.connection && input.connection.type === Blockly.INPUT_VALUE && !input.connection.targetConnection) {
+          problems.push({ id: b.id, text: `A "${blockLabel(b)}" block is missing a value -- one of its sockets is still empty.` });
+        }
+      });
+    });
+    return problems;
+  }
+
   function generateMainJava() {
+    const problems = validateWorkspace();
+    if (problems.length) {
+      const err = new Error(`Fix ${problems.length} problem${problems.length === 1 ? '' : 's'} before building:\n` + problems.map((p) => `  • ${p.text}`).join('\n'));
+      err.problems = problems;
+      throw err;
+    }
+
     const Java = window.QuintJava;
     Java.init(workspace);
 
@@ -248,8 +307,12 @@
     const eventBlocks = top.filter((b) => EVENT_INFO[b.type]);
     const commandBlocks = top.filter((b) => b.type === 'mc_command_define');
 
+    // Every variable is a single Object-typed field, so one variable can
+    // hold a number, a string, a boolean, a list, a player -- whatever was
+    // last assigned to it -- instead of needing a separate "make a number
+    // variable"/"make a list variable" block for each kind of value.
     const varFields = workspace.getAllVariables()
-      .map((v) => `    double ${Java.getVariableName(v.getId())} = 0;`)
+      .map((v) => `    Object ${Java.getVariableName(v.getId())} = Double.valueOf(0);`)
       .join('\n');
 
     setGenScope(Java, NO_CONTEXT);
@@ -311,14 +374,15 @@ ${eventMethods}}
   // -----------------------------------------------------------------------
   // Toolbar: New / Save / Load
   // -----------------------------------------------------------------------
-  document.getElementById('btn-new').addEventListener('click', () => {
+  function startNewProject() {
     if (prefs.confirmNew && !confirm('Start a new plugin? Anything not saved will be lost.')) return;
     workspace.clear();
     meta = defaultMeta();
     syncTitleFromName();
     setStatus('New project started. Drag an Events block in to begin!');
     playClick();
-  });
+  }
+  document.getElementById('btn-new').addEventListener('click', startNewProject);
 
   document.getElementById('btn-save').addEventListener('click', () => {
     const state = Blockly.serialization.workspaces.save(workspace);
@@ -394,6 +458,29 @@ ${eventMethods}}
     localStorage.removeItem('quint-project-' + id);
     projectsIndexSet(projectsIndexGet().filter((p) => p.id !== id));
   }
+  function renameProjectById(id, oldName) {
+    const input = prompt('Rename project', oldName);
+    if (input == null) return false;
+    const name = input.trim();
+    if (!name) return false;
+    const raw = localStorage.getItem('quint-project-' + id);
+    if (!raw) return false;
+    try {
+      const parsed = JSON.parse(raw);
+      parsed.meta = parsed.meta || {};
+      parsed.meta.name = name;
+      localStorage.setItem('quint-project-' + id, JSON.stringify(parsed));
+    } catch (e) { return false; }
+    const idx = projectsIndexGet();
+    const entry = idx.find((p) => p.id === id);
+    if (entry) { entry.name = name; projectsIndexSet(idx); }
+    if (meta.id === id) {
+      meta.name = name;
+      meta.mainClass = sanitizeIdentifier(name, 'QuintMain');
+      syncTitleFromName();
+    }
+    return true;
+  }
 
   function autosave() {
     if (!prefs.autosave) return;
@@ -429,6 +516,8 @@ ${eventMethods}}
     document.getElementById('set-description').value = meta.description;
     document.getElementById('set-author').value = meta.author;
     document.getElementById('set-mcversion').value = resolveMcVersion();
+    document.getElementById('set-depend').value = (meta.depend || []).join(', ');
+    document.getElementById('set-softdepend').value = (meta.softdepend || []).join(', ');
     showModal('modal-settings');
   });
   document.getElementById('btn-settings-save').addEventListener('click', () => {
@@ -439,6 +528,8 @@ ${eventMethods}}
     meta.description = document.getElementById('set-description').value.trim();
     meta.author = document.getElementById('set-author').value.trim();
     meta.mcVersion = document.getElementById('set-mcversion').value;
+    meta.depend = parseDependList(document.getElementById('set-depend').value);
+    meta.softdepend = parseDependList(document.getElementById('set-softdepend').value);
     syncTitleFromName();
     hideModal('modal-settings');
     autosave();
@@ -506,10 +597,11 @@ ${eventMethods}}
       row.className = 'project-row';
       row.innerHTML = `
         <div class="project-info">
-          <b>${p.name}</b>
+          <b>${escapeHtml(p.name)}</b>
           <span>${timeAgo(p.updatedAt)}</span>
         </div>
         <div class="project-actions">
+          <span class="icon-btn" data-action="rename" title="Rename"><i data-lucide="pencil"></i></span>
           <span class="icon-btn" data-action="delete" title="Delete"><i data-lucide="trash-2"></i></span>
         </div>`;
       row.querySelector('.project-info').addEventListener('click', () => {
@@ -518,6 +610,13 @@ ${eventMethods}}
           toast(`Loaded "${p.name}"`, 'success');
         } else {
           toast('Could not load that project.', 'error');
+        }
+      });
+      row.querySelector('[data-action="rename"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (renameProjectById(p.id, p.name)) {
+          renderProjectsList();
+          toast('Project renamed.', 'success');
         }
       });
       row.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
@@ -533,6 +632,87 @@ ${eventMethods}}
   }
 
   document.getElementById('btn-projects').addEventListener('click', () => {
+    renderProjectsList();
+    showModal('modal-projects');
+  });
+
+  // -----------------------------------------------------------------------
+  // Project menu: click the project name to rename it, start a new
+  // project, or jump straight to a recently-saved one, without leaving
+  // the workspace to dig through the full "My Projects" modal.
+  // -----------------------------------------------------------------------
+  function setProjectMenuOpen(open) {
+    const menu = document.getElementById('project-menu');
+    const trigger = document.getElementById('project-menu-trigger');
+    menu.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+    if (open) {
+      document.getElementById('project-rename-input').value = meta.name;
+      renderProjectMenuRecent();
+    }
+  }
+
+  function renderProjectMenuRecent() {
+    const wrap = document.getElementById('project-menu-recent');
+    const emptyEl = document.getElementById('project-menu-recent-empty');
+    const projects = projectsIndexGet()
+      .filter((p) => p.id !== meta.id)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 5);
+    wrap.innerHTML = '';
+    emptyEl.hidden = projects.length > 0;
+    for (const p of projects) {
+      const row = document.createElement('div');
+      row.className = 'project-menu-row';
+      row.innerHTML = `<b>${escapeHtml(p.name)}</b><span>${timeAgo(p.updatedAt)}</span>`;
+      row.addEventListener('click', () => {
+        if (loadProjectById(p.id)) {
+          setProjectMenuOpen(false);
+          toast(`Switched to "${p.name}"`, 'success');
+        } else {
+          toast('Could not load that project.', 'error');
+        }
+      });
+      wrap.appendChild(row);
+    }
+  }
+
+  document.getElementById('project-menu-trigger').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setProjectMenuOpen(document.getElementById('project-menu').hidden);
+  });
+  document.getElementById('project-menu').addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('project-menu');
+    if (!menu.hidden && !menu.contains(e.target) && e.target !== document.getElementById('project-menu-trigger')) {
+      setProjectMenuOpen(false);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setProjectMenuOpen(false);
+  });
+
+  const renameInput = document.getElementById('project-rename-input');
+  function commitRename() {
+    const name = renameInput.value.trim();
+    if (!name || name === meta.name) { renameInput.value = meta.name; return; }
+    meta.name = name;
+    meta.mainClass = sanitizeIdentifier(name, 'QuintMain');
+    syncTitleFromName();
+    saveProjectSnapshot();
+    toast('Project renamed.', 'success');
+  }
+  renameInput.addEventListener('change', commitRename);
+  renameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') renameInput.blur();
+  });
+
+  document.getElementById('menu-new-project').addEventListener('click', () => {
+    setProjectMenuOpen(false);
+    startNewProject();
+  });
+  document.getElementById('menu-all-projects').addEventListener('click', () => {
+    setProjectMenuOpen(false);
     renderProjectsList();
     showModal('modal-projects');
   });
@@ -611,7 +791,7 @@ ${eventMethods}}
     const packageName = T.sanitizePackage(meta.packageName);
     const mainClass = T.sanitizeIdentifier(meta.mainClass, 'QuintMain');
     const mcv = MC_VERSIONS[resolveMcVersion()];
-    const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion };
+    const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion, softdepend: effectiveSoftDepend() };
     const packagePath = packageName.split('.').join('/');
 
     const zip = new JSZip();
@@ -661,7 +841,7 @@ ${eventMethods}}
       const packageName = T.sanitizePackage(meta.packageName);
       const mainClass = T.sanitizeIdentifier(meta.mainClass, 'QuintMain');
       const mcv = MC_VERSIONS[resolveMcVersion()];
-      const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion };
+      const normalizedProject = { ...meta, packageName, mainClass, apiVersion: mcv.apiVersion, paperVersion: mcv.paperVersion, softdepend: effectiveSoftDepend() };
       const pluginYml = T.buildPluginYml(normalizedProject, commands);
 
       const blob = await window.QuintCompiler.compilePluginJar(
