@@ -11,7 +11,9 @@
     "dev:app": "npx serve public/app",
     "electron:dev": "electron .",
     "dist": "electron-builder --publish=never",
-    "release": "electron-builder --publish=always"
+    "release": "electron-builder --publish=always",
+    "dist:au": "electron-builder --config build/au-quint.config.json --publish=never",
+    "release:au": "electron-builder --config build/au-quint.config.json --publish=always"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
