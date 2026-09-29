@@ -16,6 +16,11 @@ const handler = require('serve-handler');
 const { autoUpdater } = require('electron-updater');
 
 const APP_VERSION = require('./package.json').version;
+// electron-builder's `extraMetadata.name` (see build/au-quint.config.json) bakes
+// a different `name` into the packaged package.json for the AU-Quint build --
+// that's how one shared main process tells which variant it's running as.
+const IS_AU_BUILD = require('./package.json').name === 'au-quint';
+const DISPLAY_NAME = IS_AU_BUILD ? 'AU-Quint' : 'Quint';
 
 let mainWindow;
 let server;
@@ -121,13 +126,13 @@ function buildMenu() {
         { label: 'Report an Issue', click: () => shell.openExternal('https://github.com/deadbytee-del/Quint/issues') },
         { type: 'separator' },
         {
-          label: 'About Quint',
+          label: `About ${DISPLAY_NAME}`,
           click: () => {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
-              title: 'About Quint',
-              message: 'Quint',
-              detail: `Version ${APP_VERSION}\nThe world's easiest Minecraft plugin creator.\nhttps://github.com/deadbytee-del/Quint`,
+              title: `About ${DISPLAY_NAME}`,
+              message: DISPLAY_NAME,
+              detail: `Version ${APP_VERSION}${IS_AU_BUILD ? ' (auto-updating build)' : ''}\nThe world's easiest Minecraft plugin creator.\nhttps://github.com/deadbytee-del/Quint`,
             });
           },
         },
@@ -145,7 +150,7 @@ async function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    title: 'Quint',
+    title: DISPLAY_NAME,
     backgroundColor: '#1f171d',
     show: false,
     icon: path.join(__dirname, 'build', 'icon.png'),
@@ -157,6 +162,10 @@ async function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
+  // The page's own <title> ("Quint — ...") would otherwise override the
+  // BrowserWindow title above as soon as it loads -- keep our variant name
+  // (AU-Quint vs Quint) in the titlebar/taskbar instead.
+  mainWindow.on('page-title-updated', (event) => event.preventDefault());
   mainWindow.loadURL(`http://127.0.0.1:${port}/`);
 
   // Open any target="_blank" link (e.g. the README link in the settings
@@ -340,6 +349,37 @@ ipcMain.handle('quint:native-decompile', async (event, jarBase64) => {
   }
 });
 
+// -----------------------------------------------------------------------
+// Auto-update wiring. electron-builder bakes a per-variant `app-update.yml`
+// into each packaged build (channel "latest" for Quint, "au" for AU-Quint --
+// see build/au-quint.config.json's publish.channel), so electron-updater
+// already looks at the right release metadata file on GitHub without any
+// runtime branching here; this just makes checks actually happen reliably
+// (on launch and periodically) and makes failures visible instead of being
+// silently swallowed.
+// -----------------------------------------------------------------------
+function setUpAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  const log = (...args) => console.log(`[${DISPLAY_NAME} auto-updater]`, ...args);
+
+  autoUpdater.on('checking-for-update', () => log('checking for update…'));
+  autoUpdater.on('update-available', (info) => log('update available:', info.version));
+  autoUpdater.on('update-not-available', () => log('already up to date'));
+  autoUpdater.on('error', (err) => log('update check failed:', err && err.message));
+  autoUpdater.on('download-progress', (p) => log(`downloading update… ${Math.round(p.percent)}%`));
+  autoUpdater.on('update-downloaded', (info) => log('update downloaded, will install on quit:', info.version));
+
+  const check = () => autoUpdater.checkForUpdatesAndNotify().catch((err) => log('check failed:', err && err.message));
+
+  check();
+  // Re-check periodically too -- most users leave the app open for a long
+  // time rather than relaunching it often, so a launch-only check would
+  // rarely fire in practice.
+  setInterval(check, 4 * 60 * 60 * 1000);
+}
+
 app.whenReady().then(async () => {
   fixPathFromLoginShell();
   if (process.platform === 'win32') app.setAppUserModelId('com.quint.app');
@@ -353,7 +393,7 @@ app.whenReady().then(async () => {
   // meaningful for an installed, packaged build; a plain `electron .` dev
   // run has no update feed to check.
   if (app.isPackaged) {
-    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    setUpAutoUpdater();
   }
 });
 
