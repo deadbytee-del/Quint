@@ -86,6 +86,11 @@ svg.lucide { width: 14px; height: 14px; stroke-width: 2.25; flex-shrink: 0; vert
   flex-direction: column;
   gap: 4px;
 }
+/* .dropdown-panel's own `display: flex` has equal specificity to the
+   browser's built-in `[hidden] { display: none }` rule and wins the
+   cascade tie (author styles apply after UA styles) -- without this,
+   toggling the `hidden` attribute/property never actually hides it. */
+.dropdown-panel[hidden] { display: none; }
 #project-rename-label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
 #project-rename-label span { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--ink-faint); }
 #project-rename-input {
