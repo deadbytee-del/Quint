@@ -74,6 +74,34 @@
       clearTimeout(autosave._t);
       autosave._t = setTimeout(autosave, 800);
     });
+    // A toolbox category's flyout is an overlay glued to the left edge of
+    // the workspace -- it doesn't push content out of the way, it just
+    // covers whatever's underneath. Blocks near the left edge (where newly
+    // dragged-in blocks naturally tend to land, right next to the flyout
+    // they came from) end up hidden behind it every time that category (or
+    // any other) is reopened, which reads as blocks going missing/broken.
+    // Nudge the whole canvas right by the toolbox+flyout width while a
+    // category is open, and back when it closes, so nothing is ever hidden.
+    let flyoutPushPx = 0;
+    workspace.addChangeListener((e) => {
+      if (e.type !== Blockly.Events.TOOLBOX_ITEM_SELECT) return;
+      setTimeout(() => {
+        if (e.newItem && !flyoutPushPx) {
+          const toolbox = workspace.getToolbox();
+          const flyout = workspace.getFlyout();
+          const occlude = (toolbox ? toolbox.getWidth() : 0) + (flyout ? flyout.getWidth() : 0);
+          if (occlude > 0) {
+            flyoutPushPx = occlude;
+            workspace.scrollX += flyoutPushPx;
+            workspace.translate(workspace.scrollX, workspace.scrollY);
+          }
+        } else if (!e.newItem && flyoutPushPx) {
+          workspace.scrollX -= flyoutPushPx;
+          workspace.translate(workspace.scrollX, workspace.scrollY);
+          flyoutPushPx = 0;
+        }
+      }, 0);
+    });
     if (state) Blockly.serialization.workspaces.load(state, workspace);
     return workspace;
   }
