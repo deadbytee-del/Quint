@@ -53,12 +53,12 @@
       <a class="download-card" id="dl-mac" href="https://github.com/deadbytee-del/Quint/releases/latest" target="_blank" rel="noopener">
         <i data-lucide="apple"></i>
         <b>macOS</b>
-        <span class="dl-detail">.dmg &middot; Intel &amp; Apple Silicon</span>
+        <span class="dl-detail">.dmg, .pkg &middot; Intel &amp; Apple Silicon</span>
       </a>
       <a class="download-card" id="dl-linux" href="https://github.com/deadbytee-del/Quint/releases/latest" target="_blank" rel="noopener">
         <i data-lucide="terminal"></i>
         <b>Linux</b>
-        <span class="dl-detail">.AppImage</span>
+        <span class="dl-detail">.AppImage, .deb, .rpm</span>
       </a>
     </div>
     <p class="hint">Every download comes from <a href="https://github.com/deadbytee-del/Quint/releases" target="_blank" rel="noopener">Quint's GitHub Releases</a> &mdash; open source, nothing hidden. Not sure which file? Any button above takes you to the latest release page.</p>
@@ -119,6 +119,23 @@
     <a href="app/">Browser version</a>
   </span>
 </footer>
+
+<div class="modal-backdrop" id="modal-os-picker" hidden>
+  <div class="modal">
+    <h2 id="os-picker-title"><i data-lucide="download"></i> Choose your version</h2>
+    <p class="hint" id="os-picker-hint"></p>
+    <div id="os-picker-options"></div>
+    <div id="os-picker-result" hidden>
+      <p id="os-picker-downloading"><i data-lucide="check-circle-2"></i> <span></span></p>
+      <h3 id="os-picker-instructions-title">How to install &amp; open it</h3>
+      <ol id="os-picker-instructions-steps"></ol>
+      <button class="tb-btn" id="os-picker-back"><i data-lucide="arrow-left"></i> Back to options</button>
+    </div>
+    <div class="modal-actions">
+      <button class="tb-btn" id="os-picker-close">Close</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
 <script src="js/landing.js"></script>
