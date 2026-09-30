@@ -37,13 +37,19 @@ Head to [the website](https://deadbytee-del.github.io/Quint/) and download the d
 
 ### Desktop app
 
-Quint ships as a desktop app (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) — it's the same browser-based editor, opened in its own window instead of a browser tab, so it works completely offline after the first launch. Grab the latest build for your OS from the [download page](https://deadbytee-del.github.io/Quint/) or directly from the [Releases page](https://github.com/deadbytee-del/Quint/releases/latest).
+Quint ships as a desktop app — it's the same browser-based editor, opened in its own window instead of a browser tab, so it works completely offline after the first launch. Every OS has more than one installer to choose from:
+
+- **Windows**: `.exe` installer or a `Setup.exe`/portable build.
+- **macOS**: `.dmg` (drag to Applications), `.pkg` (scripted/silent install), or a `.zip` — each built for both Intel and Apple Silicon.
+- **Linux**: `.AppImage` (no install, no package manager needed), `.deb` (Debian/Ubuntu and derivatives), or `.rpm` (Fedora/RHEL and derivatives).
+
+There's also a separately-branded **AU-Quint** build with the exact same editor, published on its own auto-update channel (so it can never share update metadata with the regular Quint build) — grab whichever you want from the [download page](https://deadbytee-del.github.io/Quint/) or directly from the [Releases page](https://github.com/deadbytee-del/Quint/releases/latest).
 
 The desktop app isn't just a bookmarked tab -- it does a few things a website fundamentally can't:
 
 - ⚡ **Native compiling.** A browser tab can only run a real Java toolchain by emulating one in WebAssembly (see below) — real, but slower to start every time. The desktop app instead checks for a Java runtime already on your machine and, if it finds one, runs the very same compiler/decompiler jars through it directly. No WASM engine to load, no browser memory ceiling — builds finish in well under a second instead of the several seconds the in-browser path takes. If no system Java is found, it falls back to the exact same in-browser compiler the website uses, so it always works either way.
 - 🍎 **Works the same on macOS.** GUI apps on macOS often can't see a JDK that's perfectly visible from Terminal, because they don't inherit your shell's `PATH`. Quint works around this at startup (reading your login shell's real `PATH`, plus checking `JAVA_HOME` and `/usr/libexec/java_home`), so a Java install that "should" work usually does.
-- 🔄 **Auto-updates** in the background via GitHub Releases, instead of you having to notice a new version and re-download it.
+- 🔄 **Auto-updates** in the background via GitHub Releases, instead of you having to notice a new version and re-download it. Fully automatic on Windows and Linux. On macOS this currently requires downloading each new version manually, because this repo doesn't (yet) have a paid Apple Developer signing certificate, and macOS's Squirrel.Mac updater refuses to apply an update to an unsigned app -- a maintainer with a certificate can enable it by adding it as `MAC_CSC_LINK`/`MAC_CSC_KEY_PASSWORD` (plus `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` for notarization) repo secrets; `desktop-release.yml` already picks them up automatically once present.
 - 💾 A real save-file dialog (instead of a browser downloads folder) and a proper installer with a Start Menu/Desktop shortcut on Windows.
 
 ### Running it yourself

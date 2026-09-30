@@ -1,10 +1,13 @@
 {
   "name": "quint",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Quint - the world's easiest Minecraft plugin creator. Drag-and-connect, block-based plugin building (Scratch-style) with real Java/Paper output and jar auto-decompilation, entirely in the browser -- no install, no server.",
   "main": "electron-main.js",
   "repository": "deadbytee-del/Quint",
-  "author": "deadbytee-del",
+  "author": {
+    "name": "deadbytee-del",
+    "email": "deadbytee-del@users.noreply.github.com"
+  },
   "license": "MIT",
   "scripts": {
     "dev": "npx serve public",
@@ -58,13 +61,20 @@
     "mac": {
       "target": [
         { "target": "dmg", "arch": ["x64", "arm64"] },
-        { "target": "zip", "arch": ["x64", "arm64"] }
+        { "target": "zip", "arch": ["x64", "arm64"] },
+        { "target": "pkg", "arch": ["x64", "arm64"] }
       ],
-      "category": "public.app-category.education"
+      "category": "public.app-category.education",
+      "minimumSystemVersion": "10.15.0"
+    },
+    "pkg": {
+      "installLocation": "/Applications"
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb",
+        "rpm"
       ],
       "category": "Education"
     }
