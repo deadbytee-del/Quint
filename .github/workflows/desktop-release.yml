@@ -25,15 +25,37 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install rpmbuild (Linux only, needed for the .rpm target)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
       - name: Install dependencies
         run: npm install
 
+      # macOS signing/notarization are opt-in: electron-builder silently
+      # builds unsigned when these are unset (safe default for this repo,
+      # which has no Apple Developer certificate yet), and picks them up
+      # automatically the moment they're added as repo secrets -- no
+      # workflow change needed to turn signing on later. Unsigned builds
+      # work fine to download and run, but an unsigned app can't apply its
+      # own auto-updates on macOS (Squirrel.Mac requires a valid signature),
+      # so Mac auto-update needs these secrets set to actually work.
       - name: Build and publish installer
         run: npx electron-builder --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Build and publish AU-Quint installer
         run: npx electron-builder --config build/au-quint.config.json --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
